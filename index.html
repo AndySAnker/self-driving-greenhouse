@@ -1,0 +1,1442 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Self-Driving Greenhouse</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;700&display=swap">
+<style>
+/* Layout: voxel greenhouse fills the screen; stage bar on top, recipe map left, gold chart right.
+   One deliberate visual world (dark stone panels over a bright sky), so no light/dark switch. */
+:root{
+  color-scheme: dark;
+  --stone:#1b2320; --stone-2:#26312c; --stone-3:#34423b; --well:#0f1512;
+  --edge-hi:#4b5d54; --edge-lo:#0b0f0d;
+  --ink:#f1f4ea; --muted:#b9c6b3;
+  --leaf:#7fd650; --amber:#f2b33d; --magenta:#d685ff; --cyan:#5fd3e8; --danger:#ff7a66; --gold:#ffd84a;
+  /* Lexend everywhere: designed for reading fluency; no pixel fonts, no all-caps, generous spacing (dyslexia-friendly) */
+  --f-display:"Lexend","Verdana",system-ui,sans-serif;
+  --f-body:"Lexend","Verdana",system-ui,sans-serif;
+  --f-data:"Lexend","Verdana",system-ui,sans-serif;
+}
+html,body{height:100%}
+[hidden]{display:none!important}
+*{box-sizing:border-box}
+body{background:var(--stone);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.5;letter-spacing:.01em;word-spacing:.06em;overflow:hidden;margin:0;font-variant-numeric:tabular-nums}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+h1,h2,h3{font-family:var(--f-display);font-weight:700;margin:0;text-wrap:balance;line-height:1.25;letter-spacing:0}
+p{margin:0;line-height:1.5}
+.num{font-family:var(--f-data);font-variant-numeric:tabular-nums}
+.label{font-family:var(--f-display);font-size:14px;font-weight:500;color:var(--muted)}
+.small{font-size:14px;color:#c3cfbe;line-height:1.5}
+
+#app{position:relative;height:100%;width:100%;overflow:hidden;background:#a7d8f2}
+#stage{position:absolute;inset:0}
+#gl{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:crosshair}
+
+.panel{background:var(--stone);border:2px solid var(--edge-lo);box-shadow:inset 2px 2px 0 var(--edge-hi),inset -2px -2px 0 #111714}
+.btn{background:var(--stone-2);border:2px solid var(--edge-lo);box-shadow:inset 2px 2px 0 var(--edge-hi),inset -2px -2px 0 #111714;padding:7px 13px;cursor:pointer;font-family:var(--f-display);font-weight:500;letter-spacing:.02em;line-height:1.1}
+.btn:hover{background:var(--stone-3)}
+.btn:active{box-shadow:inset -2px -2px 0 var(--edge-hi),inset 2px 2px 0 #111714}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.btn.primary{background:#3f7a26}.btn.primary:hover{background:#4c902f}
+.btn.big{font-size:19px;padding:11px 20px}
+.btn.small{padding:4px 9px;font-size:14px}
+
+/* ---------- top stage bar ---------- */
+#top{position:absolute;left:8px;right:8px;top:8px;display:flex;gap:8px;align-items:stretch;flex-wrap:wrap;z-index:5}
+.cell{padding:6px 12px;display:flex;flex-direction:column;justify-content:center;gap:2px;min-width:0}
+.cell .big{font-family:var(--f-data);font-size:19px;font-weight:700;line-height:1.1}
+.stagename{font-family:var(--f-display);font-size:20px;font-weight:700;line-height:1.1}
+.dots{display:flex;gap:4px}
+.dots i{width:22px;height:8px;background:#0d1210;display:block;border:1px solid #000}
+#daybar{height:8px;background:#0d1210;position:relative;width:150px;max-width:100%}
+#daybar i{position:absolute;left:0;top:0;bottom:0;background:var(--leaf)}
+#ctrls{display:flex;gap:4px;align-items:center;margin-left:auto;padding:6px}
+
+#coach{position:absolute;left:50%;transform:translateX(-50%);top:calc(var(--toph,64px) + 16px);max-width:min(560px,calc(100% - 760px));min-width:260px;padding:9px 16px;z-index:4;font-size:15px;line-height:1.35;text-align:center;pointer-events:none}
+#coach b{color:var(--gold)}
+
+/* ---------- side panels ---------- */
+#left,#right{position:absolute;top:calc(var(--toph,64px) + 16px);bottom:12px;z-index:3;display:flex;flex-direction:column;gap:8px;overflow:auto}
+#left{left:8px;width:390px} #right{right:8px;width:330px}
+.card{padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.card h3{font-size:17px}
+.goalline{font-family:var(--f-data);font-size:14px;color:var(--gold);background:var(--well);padding:6px 8px;border:1px solid var(--edge-hi)}
+#map{width:100%;display:block;cursor:pointer;touch-action:manipulation}
+.grad{height:10px;background:linear-gradient(90deg,#4a1c1c,#8f3324 30%,#c9702e 55%,#d9b23a 75%,#8fd14a 92%,#ffd84a);border:1px solid #000}
+.gradlbl{display:flex;justify-content:space-between;font-size:14px;color:var(--muted)}
+.keyrow{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:14px;color:var(--muted)}
+.keyrow span{display:inline-flex;align-items:center;gap:5px}
+.keyrow i{width:11px;height:11px;display:inline-block;border:2px solid var(--c);background:var(--b,transparent)}
+.rowbtns{display:flex;gap:6px;flex-wrap:wrap}
+#tip{position:fixed;z-index:30;pointer-events:none;padding:7px 10px;font-size:14px;max-width:280px;line-height:1.4}
+canvas.chart{width:100%;height:180px;display:block}
+.speak{display:inline-flex;align-items:center;gap:6px}
+.legend{display:flex;flex-wrap:wrap;gap:3px 10px;font-size:14px;color:var(--muted)}
+.legend span::before{content:"";display:inline-block;width:12px;height:3px;margin-right:5px;vertical-align:middle;background:var(--c)}
+.legend span.dash::before{background:repeating-linear-gradient(90deg,var(--c) 0 4px,transparent 4px 7px)}
+.kv{display:grid;grid-template-columns:1fr auto;gap:2px 10px;font-size:14px}
+.kv b{font-family:var(--f-data);text-align:right}
+
+#hand{position:absolute;left:50%;transform:translateX(-50%);bottom:14px;z-index:5;padding:8px 14px;font-size:14px;text-align:center}
+#hand b{color:var(--gold);font-family:var(--f-data)}
+#toasts{position:absolute;left:50%;transform:translateX(-50%);bottom:84px;display:flex;flex-direction:column;gap:6px;align-items:center;z-index:6;pointer-events:none}
+.toast{padding:8px 14px;font-size:14px;max-width:min(520px,calc(100vw - 32px));animation:pop .25s ease-out}
+.toast.gold{background:#3b3210;color:var(--gold)} .toast.bad{background:#3a1813}
+@keyframes pop{from{transform:translateY(8px);opacity:0}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.toast{animation:none}}
+
+/* ---------- overlays ---------- */
+.overlay{position:absolute;inset:0;background:rgba(8,12,10,.6);z-index:20;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:24px 16px}
+.modal{width:min(900px,100%);padding:22px 24px;display:flex;flex-direction:column;gap:14px;margin:auto 0}
+.modal h2{font-size:28px}
+.modal p{max-width:68ch}
+.eyebrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+.choice{padding:12px;display:flex;flex-direction:column;gap:6px;cursor:pointer;text-align:left;background:var(--stone-2);border:3px solid var(--edge-lo);min-width:0}
+.choice:hover{background:var(--stone-3)}
+.choice.on{border-color:var(--leaf);background:#24361d}
+.choice h3{font-size:17px;display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.choice .price{font-family:var(--f-data);font-size:14px;color:var(--gold);white-space:nowrap}
+.choice .what{font-size:14px;line-height:1.4}
+.choice .note{font-size:14px;color:var(--amber);line-height:1.35}
+.choice .unit{font-family:var(--f-data);font-size:14px;color:var(--cyan)}
+.group{display:flex;flex-direction:column;gap:6px}
+.group .opts{display:flex;flex-wrap:wrap;gap:6px}
+.opt{background:var(--well);border:2px solid var(--edge-lo);padding:7px 10px;cursor:pointer;text-align:left;font-size:14px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.opt.on{border-color:var(--leaf);background:#24361d}
+.opt .price{font-family:var(--f-data);font-size:14px;color:var(--gold)}
+.opt .note{font-size:14px;color:var(--amber);max-width:22ch}
+.total{font-family:var(--f-data);font-size:16px;color:var(--gold);background:var(--well);padding:8px 12px;border:1px solid var(--edge-hi)}
+.warn{color:var(--danger);font-size:14px}
+.bignum{font-family:var(--f-data);font-size:46px;font-weight:700;color:var(--gold);line-height:1}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.stat{background:var(--well);padding:10px;border:1px solid var(--edge-hi)}
+.stat .v{font-family:var(--f-data);font-size:22px;font-weight:700}
+.stat .k{font-size:14px;color:var(--muted)}
+.lesson{font-size:17px;line-height:1.5;border-left:4px solid var(--c,var(--leaf));padding:4px 0 4px 12px}
+canvas.wide{width:100%;height:260px;display:block;background:var(--well);border:1px solid var(--edge-hi)}
+table.t{width:100%;border-collapse:collapse;font-size:14px}
+table.t th{font-family:var(--f-display);font-weight:500;text-align:left;color:var(--muted);padding:6px;border-bottom:2px solid var(--edge-hi);white-space:nowrap}
+table.t td{padding:7px 6px;border-bottom:1px solid #2a3530}
+table.t td.n{font-family:var(--f-data);text-align:right;font-variant-numeric:tabular-nums}
+.tw{overflow-x:auto}
+.swatch{display:inline-block;width:12px;height:12px;margin-right:6px;vertical-align:-1px;background:var(--c)}
+.bars{display:flex;flex-direction:column;gap:5px}
+.bar{display:grid;grid-template-columns:100px 1fr 120px;gap:8px;align-items:center;font-size:14px}
+.bar .track{height:10px;background:var(--well);border:1px solid #000;position:relative}
+.bar .track i{position:absolute;left:0;top:0;bottom:0;background:var(--c,var(--leaf))}
+.stars{color:var(--gold);font-size:24px;letter-spacing:2px}
+.code{font-family:var(--f-data);font-size:24px;font-weight:700;letter-spacing:.12em;color:var(--gold);background:var(--well);padding:8px 14px;border:2px dashed var(--edge-hi);user-select:all;word-break:break-all}
+input[type=text]{font:inherit;font-family:var(--f-data);background:var(--well);border:2px solid var(--edge-lo);color:var(--ink);padding:8px 10px;width:100%;max-width:300px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.chips{display:flex;gap:3px;flex-wrap:wrap}
+.chip{font-size:14px;padding:1px 5px;border:1px solid var(--c);color:var(--c);white-space:nowrap;font-family:var(--f-display)}
+.live{display:inline-flex;align-items:center;gap:6px;font-size:14px;color:var(--muted)}
+.live i{width:8px;height:8px;background:var(--leaf);display:inline-block}
+
+
+/* ---------- planning panel ---------- */
+.planners{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.pl{background:var(--well);border:2px solid var(--edge-lo);padding:6px 8px;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:1px;min-width:0}
+.pl:hover{background:var(--stone-3)}
+.pl.on{border-color:var(--magenta);background:#2c2236}
+.pl.locked .pn{color:var(--muted)}
+.pl .pn{font-family:var(--f-display);font-size:14px}
+.pl .pm{font-size:14px;color:var(--gold);font-family:var(--f-data)}
+.pl[disabled]{opacity:.5;cursor:not-allowed}
+.kh,.prow{display:grid;grid-template-columns:22px repeat(4,1fr);gap:6px;align-items:center}
+.kh span{font-size:14px;font-family:var(--f-display)}
+.prows{display:flex;flex-direction:column;gap:2px;max-height:228px;overflow:auto}
+.prow{background:transparent;border:1px solid transparent;padding:2px 2px;cursor:pointer}
+.prow:hover{background:var(--stone-2)}
+.prow.on{border-color:var(--gold);background:#2a2a18}
+.prow .pi{font-family:var(--f-data);font-size:14px;color:var(--muted);text-align:right}
+.mini{display:block;height:9px;background:var(--well);border:1px solid #000;position:relative}
+.mini i{position:absolute;left:0;top:0;bottom:0}
+.editor{display:flex;flex-direction:column;gap:4px;background:var(--well);padding:8px;border:1px solid var(--edge-hi)}
+.sl{display:grid;grid-template-columns:82px 1fr 46px 70px;gap:6px;align-items:center;font-size:14px}
+.sl input{width:100%}
+.sl b{text-align:right}
+.sl .u{font-size:14px;color:var(--muted)}
+#action{position:absolute;left:50%;transform:translateX(-50%);bottom:14px;z-index:6;display:flex;gap:12px;align-items:center;padding:8px 12px;flex-wrap:wrap;justify-content:center}
+#action .small{max-width:220px}
+.spin{width:14px;height:14px;display:inline-block;background:var(--magenta);animation:sp 1s steps(4) infinite}
+.spin.g{background:var(--leaf)}
+@keyframes sp{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin{animation:none}}
+ul.goal{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px}
+.props{display:flex;flex-direction:column;gap:8px}
+.prop{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;background:var(--stone-2);border:2px solid var(--edge-lo);padding:10px 12px}
+@media (max-width:760px){.prop{grid-template-columns:1fr}}
+.prop h3{font-size:18px}
+.lv{display:flex;gap:4px;flex-wrap:wrap}
+.seg{background:var(--well);border:2px solid var(--edge-lo);padding:7px 10px;cursor:pointer;font-size:14px;color:var(--ink)}
+.seg:hover{background:var(--stone-3)}
+.seg.on{background:var(--leaf);color:#0b0f0d;border-color:var(--leaf);font-weight:700}
+.checks{display:flex;flex-direction:column;gap:4px;font-size:15px}
+.checks .ok{color:var(--leaf)} .checks .bad{color:var(--danger);font-weight:500}
+.pbars{display:flex;flex-direction:column;gap:6px}
+.pbar{display:grid;grid-template-columns:110px 1fr 104px;gap:8px;align-items:center;font-size:14px}
+.pbar.dim{opacity:.55}
+.pbar .track{height:12px;background:var(--well);border:1px solid #000;position:relative}
+.pbar .track i{position:absolute;left:0;top:0;bottom:0}
+.pbar b{font-weight:500;text-align:right}
+ul.lessons{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;line-height:1.5}
+.goalbox{font-size:17px;line-height:1.5;background:#24361d;border:2px solid var(--leaf);padding:12px 14px}
+.buildgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.6fr);gap:14px}
+@media (max-width:760px){.buildgrid{grid-template-columns:1fr}}
+.bcol{display:flex;flex-direction:column;gap:8px;background:var(--stone-2);border:2px solid var(--edge-lo);padding:12px}
+.bcol h3{font-size:18px}
+.stepper{display:flex;align-items:center;gap:12px;font-size:16px}
+.stepper .btn{font-size:24px;padding:4px 16px}
+.bigbeds{font-size:44px;font-weight:700;color:var(--amber);min-width:2ch;text-align:center}
+.buylist{display:flex;flex-direction:column;gap:6px}
+.buylist .choice{padding:9px 11px}
+.buylist .choice[disabled]{opacity:.45;cursor:not-allowed}
+.formula{font-family:var(--f-data);font-size:14px;line-height:1.6;background:var(--well);border:1px solid var(--edge-hi);padding:10px 12px;color:var(--ink)}
+
+
+@media (max-width: 900px){
+  body{overflow:auto}
+  #app{height:auto;min-height:100%;overflow:visible;display:flex;flex-direction:column;background:var(--stone)}
+  #top{position:relative;left:0;right:0;top:0;padding:8px 16px;order:-2}
+  #coach{position:relative;left:auto;top:auto;bottom:auto;transform:none;margin:0 16px;max-width:none;order:-1}
+  #stage{position:relative;height:56vh;min-height:300px;flex:none;margin-top:8px}
+  #left,#right{position:relative;top:auto;bottom:auto;left:auto;right:auto;width:auto;overflow:visible;padding:8px 16px}
+  #toasts{position:fixed;bottom:16px}
+  #action{position:relative;left:auto;transform:none;bottom:auto;margin:8px 16px;order:0}
+  #ctrls{margin-left:0}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+</style>
+</head>
+<body>
+
+
+<div id="app">
+  <div id="stage"><canvas id="gl" aria-label="3D greenhouse. Click a bed to act on it."></canvas>
+    <div id="toasts" aria-live="polite"></div>
+  </div>
+  <div id="action" class="panel" hidden></div>
+  <header id="top" hidden></header>
+  <div id="coach" class="panel" aria-live="polite" hidden></div>
+  <aside id="left" hidden></aside>
+  <aside id="right" hidden></aside>
+    <div id="overlay" class="overlay" hidden></div>
+</div>
+
+<script src="three.min.js"></script>
+<script>
+  /* Class name for the live leaderboard. Change it for each class, or add ?class=othername to the link. */
+  window.SDL_CLASS = "aalto-bf9c94";
+</script>
+<script>
+"use strict";
+/* ================================================================
+   SELF-DRIVING GREENHOUSE v3 — model
+   Every plant gets its own growth conditions. A hidden analytical
+   formula decides how tall it grows in one week.
+   N = plants per batch (beds, costs money)
+   p = chance a plant is exceptional (planner quality, costs money and thinking time)
+   ================================================================ */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+let rng=mulberry32((Date.now()^Math.floor(Math.random()*1e9))>>>0);
+function gauss(r){r=r||rng;let u=0,v=0;while(!u)u=r();while(!v)v=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v)}
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+const eur=v=>(v<0?"−$":"$")+Math.abs(Math.round(v)).toLocaleString("en-US");
+
+/* ---------- the four conditions you control (stored as 0–1) ---------- */
+const KNOBS=[
+  {k:"w",name:"Water",unit:"mL/day",lo:0,hi:500,step:10,col:"#4fb0ff"},
+  {k:"l",name:"Light",unit:"µmol/m²/s",lo:0,hi:1000,step:20,col:"#ffd84a"},
+  {k:"f",name:"Fertiliser",unit:"ppm N",lo:0,hi:300,step:5,col:"#7fd650"},
+  {k:"t",name:"Temperature",unit:"°C",lo:10,hi:35,step:.5,col:"#ff8a5b"},
+];
+const toU=(i,x)=>KNOBS[i].lo+(KNOBS[i].hi-KNOBS[i].lo)*x;
+const fromU=(i,u)=>(u-KNOBS[i].lo)/(KNOBS[i].hi-KNOBS[i].lo);
+const fmtK=(i,x)=>{const v=toU(i,x);return (i===3?v.toFixed(1):Math.round(v))};
+const condText=c=>KNOBS.map((k,i)=>`${k.name} ${fmtK(i,c[i])} ${k.unit}`).join(" · ");
+const condShort=c=>c.map((x,i)=>fmtK(i,x)).join(" / ");
+
+/* ---------- the hidden biology: one analytical formula ----------
+   Each condition has a bell-shaped response. The best amount of water depends on the light
+   (more light → more evaporation → more water needed). Height in cm after one week:
+     H = 4 + 12·mean(W,L,F,T) + 48·W·L·F·T + 26·D
+   W = exp(−((w − (0.2 + 0.55·l))/0.2)²)   L = exp(−((l − 0.7)/0.3)²)
+   F = exp(−((f − 0.55)/0.28)²)            T = exp(−((t − 0.55)/0.25)²)
+   D = a smaller bump at little light and lots of fertiliser (a local optimum)          */
+const OPT={l:.7,f:.55,t:.55,wa:.2,wb:.55};
+function factors(c){const [w,l,f,t]=c;
+  return [Math.exp(-(((w-(OPT.wa+OPT.wb*l))/.2)**2)),Math.exp(-(((l-OPT.l)/.3)**2)),Math.exp(-(((f-OPT.f)/.28)**2)),Math.exp(-(((t-OPT.t)/.25)**2))]}
+// A second, smaller "comfort zone": shade-tolerant growth with lots of fertiliser. A local optimum that traps simple hill-climbing.
+const DECOY=[.3,.25,.85,.35];
+function decoyOf(c){let d=0;for(let i=0;i<4;i++)d+=(c[i]-DECOY[i])**2;return Math.exp(-d/(2*.16*.16))}
+function heightOf(c){const [a,b,d,e]=factors(c);return 4+12*(a+b+d+e)/4+48*a*b*d*e+26*decoyOf(c)}
+const HMAX=heightOf([OPT.wa+OPT.wb*OPT.l,OPT.l,OPT.f,OPT.t]);
+const GOLD=40;                       // cm: "exceptional"
+const P_RANDOM=(()=>{const r=mulberry32(99);let k=0;const n=60000;for(let i=0;i<n;i++)if(heightOf([r(),r(),r(),r()])>=GOLD)k++;return k/n})();
+function grow(c){return clamp(heightOf(c)*(1+.04*gauss()),1,80)}   // ±4 % biological variation
+
+/* ---------- planners ---------- */
+const PLANNERS=[
+  {id:"you",name:"You decide",price:0,days:0,col:"#eef3e6",
+   what:"You set the conditions yourself."},
+  {id:"random",name:"Random",price:0,days:0,col:"#cfd6d9",
+   what:"Random conditions. Learns nothing."},
+  {id:"evo",name:"Tweak the best",price:1000,days:0,col:"#7fd650",
+   what:"Copies your best plants and makes small changes."},
+  {id:"bo",name:"Bayesian optimisation",price:3000,days:1,col:"#d685ff",
+   what:"Learns from all your plants and picks the most promising next try."},
+  {id:"rough",name:"BO + rough twin",price:4000,days:2,col:"#9bb0ff",
+   what:"Like Bayesian optimisation, plus a quick computer model of plants. The model is only roughly right."},
+  {id:"twin",name:"BO + detailed twin",price:6000,days:4,col:"#5fd3e8",
+   what:"Like Bayesian optimisation, plus a detailed computer model of plants. Very good, but slow."},
+];
+const PLANNER=Object.fromEntries(PLANNERS.map(p=>[p.id,p]));
+const randCond=()=>[rng(),rng(),rng(),rng()];
+const mutate=(c,s)=>c.map(x=>clamp(x+s*gauss(),0,1));
+function topData(data,k){return data.slice().sort((a,b)=>b.y-a.y).slice(0,k)}
+function planEvo(data,n){
+  if(data.length<3)return [...Array(n)].map(randCond);
+  const top=topData(data,3);
+  return [...Array(n)].map((_,i)=>mutate(top[i%top.length].c,i<n/2?.06:.13));
+}
+function chol(A,n){const L=new Float64Array(n*n);for(let i=0;i<n;i++)for(let j=0;j<=i;j++){let s=A[i*n+j];for(let k=0;k<j;k++)s-=L[i*n+k]*L[j*n+k];L[i*n+j]=i===j?Math.sqrt(Math.max(s,1e-10)):s/L[j*n+j]}return L}
+function twinPrior(c){ // a simulation with a systematic error: right shape, slightly wrong optimum
+  const s=[c[0]+.06,c[1]-.05,c[2]+.07,c[3]-.04];return (heightOf(s)*0.95)/HMAX}
+function roughPrior(c){ // a crude model: ignores the water–light interaction, optimum noticeably off, too broad
+  const [w,l,f,t]=c;const b=x=>Math.exp(-x*x);
+  return .62*b((w-.45)/.3)*b((l-.5)/.4)*b((f-.72)/.35)*b((t-.42)/.32)}
+let PCTX=null;   // set by Round 2: {ymax, gold, detailed(c), rough(c)} — null means Round 1 (height)
+function planBO(data,n,twin){
+  const YM=PCTX?PCTX.ymax:HMAX,GL=PCTX?PCTX.gold:GOLD;
+  const prior=twin==="detailed"?(PCTX?PCTX.detailed:twinPrior):twin==="rough"?(PCTX?PCTX.rough:roughPrior):null;const useTwin=!!prior;
+  if(data.length<4&&!useTwin)return [...Array(n)].map(randCond);
+  const ys=data.map(d=>d.y/YM);const m=data.length;
+  const mean=ys.length?ys.reduce((a,b)=>a+b,0)/ys.length:.2;
+  const m0=c=>useTwin?prior(c):mean;
+  const best=data.reduce((a,d)=>Math.max(a,d.y),0);
+  const ell=.17,sf2=.08,sn2=.0015,beta=best>=GL?1.0:1.8;
+  const kf=(a,b)=>{let d=0;for(let i=0;i<4;i++)d+=(a[i]-b[i])**2;return sf2*Math.exp(-d/(2*ell*ell))};
+  let L=null,alpha=null;
+  if(m){const K=new Float64Array(m*m);for(let i=0;i<m;i++)for(let j=0;j<=i;j++){const v=kf(data[i].c,data[j].c)+(i===j?sn2:0);K[i*m+j]=v;K[j*m+i]=v}
+    L=chol(K,m);const z=new Float64Array(m);for(let i=0;i<m;i++){let s=ys[i]-m0(data[i].c);for(let k=0;k<i;k++)s-=L[i*m+k]*z[k];z[i]=s/L[i*m+i]}
+    alpha=new Float64Array(m);for(let i=m-1;i>=0;i--){let s=z[i];for(let k=i+1;k<m;k++)s-=L[k*m+i]*alpha[k];alpha[i]=s/L[i*m+i]}}
+  // candidates: random points plus local variations of the best plants
+  const cand=[];for(let i=0;i<1500;i++)cand.push(randCond());
+  for(const d of topData(data,6))for(let i=0;i<80;i++)cand.push(mutate(d.c,.07));
+  if(useTwin)for(let i=0;i<300;i++){const c=randCond();if(prior(c)>.45)cand.push(c)}
+  const v=new Float64Array(m);
+  const score=cand.map(c=>{let mu=m0(c),vr=sf2;if(m){for(let i=0;i<m;i++){const k=kf(c,data[i].c);v[i]=k;mu+=k*alpha[i]}for(let i=0;i<m;i++){let s=v[i];for(let k=0;k<i;k++)s-=L[i*m+k]*v[k];v[i]=s/L[i*m+i];vr-=v[i]*v[i]}}return mu+beta*Math.sqrt(Math.max(vr,1e-9))});
+  const out=[];
+  for(let t=0;t<n;t++){let bj=0;for(let j=1;j<cand.length;j++)if(score[j]>score[bj])bj=j;const cb=cand[bj];out.push(cb.slice());
+    for(let j=0;j<cand.length;j++){let d=0;for(let i=0;i<4;i++)d+=(cand[j][i]-cb[i])**2;score[j]-=.5*Math.exp(-d/(2*.08*.08))}}
+  return out;
+}
+function plan(id,data,n){
+  data=data.filter(d=>d.y!=null);   // plants whose score could not be measured teach the planner nothing
+  if(id==="random")return [...Array(n)].map(randCond);
+  if(id==="evo")return planEvo(data,n);
+  if(id==="bo")return planBO(data,n,false);
+  if(id==="rough")return planBO(data,n,"rough");
+  if(id==="twin")return planBO(data,n,"detailed");
+  return null;
+}
+
+/* ---------- economy ---------- */
+const START_MONEY=12000;
+const SEASON_DAYS=49;
+const GROW_DAYS=7;
+const PLANT_COST=0;
+const BEDS_START=1, BEDS_MAX=24, BEDS_PACK=1, BEDS_PRICE=1000;   // one bed = one plant per batch
+
+/* ================================================================
+   The voxel greenhouse (three.js)
+   ================================================================ */
+const canvas=document.getElementById("gl");
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true,preserveDrawingBuffer:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+const scene=new THREE.Scene();
+scene.background=new THREE.Color("#a7d8f2");
+scene.fog=new THREE.Fog("#a7d8f2",70,150);
+const cam=new THREE.PerspectiveCamera(45,1,.1,400);
+scene.add(new THREE.HemisphereLight("#eaf6ff","#5d7a3a",.75));
+const sun=new THREE.DirectionalLight("#fff4dc",.75);sun.position.set(18,30,14);scene.add(sun);
+const fill=new THREE.DirectionalLight("#cfe6ff",.25);fill.position.set(-20,12,-10);scene.add(fill);
+
+/* ---- pixel textures, drawn at 16×16 like a block game ---- */
+function pixTex(draw,size){size=size||16;const c=document.createElement("canvas");c.width=c.height=size;const g=c.getContext("2d");const r=mulberry32(draw.length*97+size);draw(g,r,size);const t=new THREE.CanvasTexture(c);t.magFilter=THREE.NearestFilter;t.minFilter=THREE.NearestFilter;t.wrapS=t.wrapT=THREE.RepeatWrapping;return t}
+const shade=(hex,a)=>{const c=new THREE.Color(hex);c.offsetHSL(0,0,a);return "#"+c.getHexString()};
+const T={
+  grass:pixTex((g,r,n)=>{for(let y=0;y<n;y++)for(let x=0;x<n;x++){g.fillStyle=shade("#6aa83a",(r()-.5)*.12);g.fillRect(x,y,1,1)}}),
+  gravel:pixTex((g,r,n)=>{for(let y=0;y<n;y++)for(let x=0;x<n;x++){g.fillStyle=shade("#b8b2a2",(r()-.5)*.16);g.fillRect(x,y,1,1)}}),
+  dirt:pixTex((g,r,n)=>{for(let y=0;y<n;y++)for(let x=0;x<n;x++){g.fillStyle=shade("#5a3c22",(r()-.5)*.14);g.fillRect(x,y,1,1)}}),
+  planks:pixTex((g,r,n)=>{for(let y=0;y<n;y++)for(let x=0;x<n;x++){const b=Math.floor(y/4);g.fillStyle=shade(b%2?"#a3743e":"#b07f45",(r()-.5)*.06-(y%4===3?.08:0)-((x+b*5)%16===0?.06:0));g.fillRect(x,y,1,1)}}),
+  water:pixTex((g,r,n)=>{for(let y=0;y<n;y++)for(let x=0;x<n;x++){g.fillStyle=shade("#3f8fd0",(r()-.5)*.1);g.fillRect(x,y,1,1)}}),
+  birch:pixTex((g,r,n)=>{for(let y=0;y<n;y++)for(let x=0;x<n;x++){g.fillStyle=r()<.12?"#2b2b2b":shade("#e9e6dc",(r()-.5)*.06);g.fillRect(x,y,1,1)}}),
+  rainbow:pixTex((g,r,n)=>{const cols=["#ff3b3b","#ff9a2e","#ffe53b","#4be35d","#3bb7ff","#6b4bff","#c14bff"];for(let y=0;y<n;y++)for(let x=0;x<n;x++){g.fillStyle=cols[Math.floor(x/n*7)];g.fillRect(x,y,1,1)}}),
+};
+T.grass.repeat.set(90,90);T.gravel.repeat.set(10,14);
+const UNIT=new THREE.BoxGeometry(1,1,1);
+const MC={};
+function mat(c,o){const k=c+(o?JSON.stringify(o):"");if(MC[k])return MC[k];const p=Object.assign({color:c},o||{});const basic=p.basic;delete p.basic;const m=basic?new THREE.MeshBasicMaterial(p):new THREE.MeshLambertMaterial(p);return MC[k]=m}
+function vox(p,x,y,z,sx,sy,sz,m){const me=new THREE.Mesh(UNIT,typeof m==="string"?mat(m):m);me.position.set(x,y,z);me.scale.set(sx,sy,sz);p.add(me);return me}
+
+/* ---- landscape ---- */
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(200,200),new THREE.MeshLambertMaterial({map:T.grass}));ground.rotation.x=-Math.PI/2;ground.position.y=-.01;scene.add(ground);
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(20,28),new THREE.MeshLambertMaterial({map:T.gravel}));floor.rotation.x=-Math.PI/2;floor.position.y=.005;scene.add(floor);
+const house=new THREE.Group();scene.add(house);
+(function buildHouse(){
+  const frame="#e8ece6";
+  for(const x of [-10,10])for(let z=-14;z<=14;z+=4)vox(house,x,3.5,z,.3,7,.3,frame);
+  for(const z of [-14,14])for(let x=-10;x<=10;x+=4)vox(house,x,3.5,z,.3,7,.3,frame);
+  for(const x of [-10,10])vox(house,x,7,0,.35,.35,28.3,frame);
+  for(const z of [-14,14])vox(house,0,7,z,20.3,.35,.35,frame);
+  for(let z=-14;z<=14;z+=4)vox(house,0,7,z,20.3,.2,.2,frame);
+  vox(house,0,7.6,0,.3,.3,28.3,frame);
+  const glass=new THREE.MeshLambertMaterial({color:"#cfefff",transparent:true,opacity:.13,depthWrite:false});
+  vox(house,-10,3.5,0,.05,7,28,glass);vox(house,10,3.5,0,.05,7,28,glass);vox(house,0,3.5,-14,20,7,.05,glass);
+  const front=vox(house,0,3.5,14,20,7,.05,new THREE.MeshLambertMaterial({color:"#cfefff",transparent:true,opacity:.07,depthWrite:false}));
+  const roof=new THREE.MeshLambertMaterial({color:"#dff4ff",transparent:true,opacity:.1,depthWrite:false,side:THREE.DoubleSide});
+  for(const sgn of [-1,1]){const r=vox(house,sgn*5,7.3,0,10.2,.05,28,roof);r.rotation.z=sgn*-.12}
+  // path to the door
+  for(let z=15;z<24;z+=1.2)vox(house,(z%2.4<1.2?.2:-.2),.04,z,2.2,.08,1,"#b8b2a2");
+  // Finnish birches in autumn
+  const birch=new THREE.MeshLambertMaterial({map:T.birch});
+  const spots=[[-17,-8],[-19,6],[-15,18],[17,-11],[19,4],[16,17],[-6,-21],[8,-22],[-24,-18],[25,-20],[-26,12],[27,13]];
+  spots.forEach(([x,z],i)=>{const h=6+(i%3);vox(house,x,h/2,z,.8,h,.8,birch);
+    const leaf=["#e0b12f","#d89a22","#c7c33a","#e6c64a"];
+    for(let k=0;k<14;k++){const a=k*2.4,rr=1+((k*7)%3)*.6;vox(house,x+Math.cos(a)*rr*.8,h-.5+((k*5)%4)*.7,z+Math.sin(a)*rr*.8,1.2,1.2,1.2,leaf[(i+k)%4])}});
+})();
+
+/* ---- beds ---- */
+const ROWZ=[-2.25,2.25,-6.75,6.75,-11.25,11.25];
+const bedPos=i=>({x:((i%4)-1.5)*4.5,z:ROWZ[Math.floor(i/4)]});
+const BED=[];
+const pickables=[];
+function spriteTex(draw){const c=document.createElement("canvas");c.width=c.height=64;draw(c.getContext("2d"));const t=new THREE.CanvasTexture(c);t.magFilter=THREE.NearestFilter;return t}
+const ICON={
+  drop:spriteTex(g=>{g.fillStyle="#0b0f0d";g.fillRect(18,6,28,52);g.fillStyle="#4fb0ff";const px=[[28,10,8,6],[24,16,16,8],[20,24,24,26],[24,50,16,4]];for(const [x,y,w,h] of px)g.fillRect(x,y,w,h);g.fillStyle="#d6f0ff";g.fillRect(26,30,6,10)}),
+  ready:spriteTex(g=>{g.fillStyle="#0b0f0d";g.fillRect(12,4,40,56);g.fillStyle="#7fd650";g.fillRect(16,8,32,48);g.fillStyle="#0b0f0d";g.fillRect(28,14,8,24);g.fillRect(28,42,8,8)}),
+  tube:spriteTex(g=>{g.fillStyle="#0b0f0d";g.fillRect(22,4,20,56);g.fillStyle="#f4f4f4";g.fillRect(26,8,12,44);g.fillStyle="#f2b33d";g.fillRect(26,32,12,20)}),
+};
+function numTex(n){return spriteTex(g=>{g.fillStyle="rgba(11,15,13,.85)";g.fillRect(8,14,48,36);g.fillStyle="#eef3e6";g.font="bold 30px monospace";g.textAlign="center";g.textBaseline="middle";g.fillText(String(n),32,33)})}
+for(let i=0;i<24;i++){
+  const p=bedPos(i);const g=new THREE.Group();g.position.set(p.x,0,p.z);scene.add(g);
+  const wood=vox(g,0,.4,0,3.2,.8,3.2,new THREE.MeshLambertMaterial({map:T.planks}));
+  const soil=vox(g,0,.82,0,2.9,.1,2.9,new THREE.MeshLambertMaterial({map:T.dirt}));
+  const tank=vox(g,0,.45,0,3.2,.9,3.2,"#e9f1f2");tank.visible=false;
+  const water=vox(g,0,.91,0,2.9,.04,2.9,new THREE.MeshLambertMaterial({map:T.water}));water.visible=false;
+  const pick=new THREE.Mesh(UNIT,new THREE.MeshBasicMaterial({visible:false}));pick.scale.set(3.6,4,3.6);pick.position.y=2;pick.userData.bed=i;g.add(pick);pickables.push(pick);
+  const label=new THREE.Sprite(new THREE.SpriteMaterial({map:numTex(i+1),depthTest:false}));label.scale.set(.9,.9,1);label.position.set(-1.25,1.2,1.25);g.add(label);
+  const status=new THREE.Sprite(new THREE.SpriteMaterial({map:ICON.drop,depthTest:false}));status.scale.set(1.1,1.1,1);status.position.set(0,3.6,0);status.visible=false;g.add(status);
+  const plant=new THREE.Group();plant.position.y=.87;g.add(plant);
+  const stake=new THREE.Group();g.add(stake);vox(stake,1.15,1.3,1.15,.08,1,.08,"#7a5a32");const flag=vox(stake,1.35,1.65,1.15,.4,.28,.05,mat("#5fd3e8",{basic:true}));stake.visible=false;
+  const beam=new THREE.Mesh(new THREE.CylinderGeometry(.35,.35,40,8,1,true),new THREE.MeshBasicMaterial({color:"#ffe066",transparent:true,opacity:.38,depthWrite:false,blending:THREE.AdditiveBlending}));beam.position.y=20;beam.visible=false;g.add(beam);
+  BED.push({g,wood,soil,tank,water,label,status,plant,stake,flag,beam,led:null});
+  g.visible=false;
+}
+const sel=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(3.5,.95,3.5)),new THREE.LineBasicMaterial({color:"#ffd84a"}));sel.visible=false;scene.add(sel);
+const hov=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(3.4,.9,3.4)),new THREE.LineBasicMaterial({color:"#ffffff",transparent:true,opacity:.7}));hov.visible=false;scene.add(hov);
+
+
+const lerpHex=(a,b,t)=>{const c=new THREE.Color(a).lerp(new THREE.Color(b),clamp(t,0,1));return "#"+c.getHexString()};
+function buildPlant(grp,p){
+  while(grp.children.length)grp.remove(grp.children[0]);
+  if(!p)return;
+  const h=p.h*p.frac;                 // cm right now
+  const fs=factors(p.c);
+  if(p.dead){vox(grp,0,.1,0,.5,.2,.5,"#6b4a2a");vox(grp,.1,.25,0,.15,.3,.15,"#7a5a32");return}
+  const vigour=p.props?p.props.green:(fs[0]+fs[2])/2;
+  let leafC=lerpHex("#d8d27a","#2a7a2e",vigour);
+  if(p.c[0]<OPT.wa+OPT.wb*p.c[1]-.25)leafC=lerpHex(leafC,"#9c7b3c",.45);       // too dry: brown edges
+  const stemC=lerpHex("#8aa83a","#4f7d28",vigour);
+  const bs=.25;const nodes=Math.max(1,Math.round(h/4.5));
+  for(let j=0;j<nodes;j++)vox(grp,0,bs/2+j*bs,0,bs*.8,bs,bs*.8,stemC);
+  const leafS=p.props?(.2+.45*p.props.yield)*Math.max(.35,p.frac):.22+.5*Math.min(1,h/60);
+  for(let j=1;j<=nodes;j++){
+    const yy=j*bs-.05;const rot=j%2;const span=leafS*(1.2-.5*j/nodes);
+    for(const s of [-1,1]){const L=vox(grp,rot?s*(span*.5+.1):0,yy,rot?0:s*(span*.5+.1),rot?span:leafS*.7,.08,rot?leafS*.7:span,leafC);L.rotation[rot?"z":"x"]=s*(rot?.25:-.25)}
+  }
+  vox(grp,0,nodes*bs+.08,0,leafS*.8,.14,leafS*.8,lerpHex(leafC,"#9be05a",.2));
+}
+function hTex(txt,gold){return spriteTex(g=>{g.fillStyle=gold?"rgba(59,50,16,.92)":"rgba(11,15,13,.85)";g.fillRect(2,18,60,28);g.fillStyle=gold?"#ffd84a":"#eef3e6";g.font="bold 19px monospace";g.textAlign="center";g.textBaseline="middle";g.fillText(txt,32,33)})}
+const hCache={};
+function refreshBed(i){
+  const B=BED[i];
+  if(!G){B.g.visible=false;return}
+  B.g.visible=i<G.beds;
+  const p=G.plants[i];
+  buildPlant(B.plant,p);
+  const showH=!!(p&&p.frac>=1);
+  B.status.visible=showH;
+  if(showH){const txt=p.label||(Math.round(p.h)+" cm");const key=txt+(p.gold?"g":"");B.status.material.map=hCache[key]||(hCache[key]=hTex(txt,p.gold));B.status.material.needsUpdate=true;B.status.position.y=1.6+Math.max(1,Math.round(p.h/4.5))*.25+.4;B.status.scale.set(1.7,1.7,1)}
+  B.beam.visible=!!(p&&p.gold&&p.frac>=1);
+  B.stake.visible=false;
+  if(B.led){const l=p?p.c[1]:0;B.led.material=mat(lerpHex("#3a3f45","#fff2c0",l),{basic:true})}
+}
+function refreshAll(){for(let i=0;i<24;i++)refreshBed(i)}
+function growVisual(){for(let i=0;i<G.beds;i++){const p=G.plants[i];if(p&&p.frac<1)buildPlant(BED[i].plant,p)}}
+
+/* ---- equipment ---- */
+const equip=new THREE.Group();scene.add(equip);
+const anim={leds:[],twin:null};
+function syncEquipment(){
+  while(equip.children.length)equip.remove(equip.children[0]);
+  anim.leds=[];anim.twin=null;anim.rough=null;
+  for(let i=0;i<24;i++)BED[i].led=null;
+  if(!G){refreshAll();return}
+  for(let i=0;i<G.beds;i++){const p=bedPos(i);vox(equip,p.x,5.66,p.z,2.6,.12,.3,"#2b2f33");BED[i].led=vox(equip,p.x,5.56,p.z,2.5,.08,.45,mat("#3a3f45",{basic:true}));vox(equip,p.x-1.2,6.4,p.z,.04,1.4,.04,"#222");vox(equip,p.x+1.2,6.4,p.z,.04,1.4,.04,"#222")}
+  // every bed has its own pump, dosing and lamp: the computer sets the conditions, the plants grow by themselves
+  const rows=[...Array(Math.ceil(G.beds/4)).keys()].map(k=>ROWZ[k]);
+  vox(equip,-8.6,1.3,-12.6,1.6,2.6,1.6,"#3b8fd9");vox(equip,-8.6,2.7,-12.6,1.7,.2,1.7,"#2a6aa6");
+  for(const z of rows){vox(equip,0,.95,z-1.75,17,.14,.14,"#3b8fd9");for(let k=0;k<4;k++)vox(equip,(k-1.5)*4.5,.92,z-1.4,.2,.2,.5,"#1d4f7d")}
+  vox(equip,-8.6,.95,0,.14,.14,26,"#3b8fd9");
+  if(G.own.bo||G.own.twin||G.own.rough){
+    vox(equip,-4.5,1.6,-13.1,1.3,3.2,1.1,"#15181b");
+    for(let r=0;r<7;r++)for(let k=0;k<3;k++){const m=vox(equip,-4.85+k*.35,.5+r*.4,-12.53,.12,.08,.04,mat("#d685ff",{basic:true}));anim.leds.push(m)}
+  }
+  if(G.own.rough){const tw=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1,1,1)),new THREE.LineBasicMaterial({color:"#9bb0ff"}));tw.position.set(-6.3,3.4,-13.1);equip.add(tw);anim.rough=tw}
+  if(G.own.twin){const tw=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1.4,1.4,1.4)),new THREE.LineBasicMaterial({color:"#5fd3e8"}));tw.position.set(-4.5,4.6,-13.1);equip.add(tw);anim.twin=tw}
+  if(G.own.evo){vox(equip,-2.4,.4,-13.1,1.6,.8,.9,"#9a7a4a");vox(equip,-2.4,1.25,-13.1,1.1,.85,.5,"#d9d2bf");vox(equip,-2.4,1.27,-12.84,.85,.6,.02,mat("#7fd650",{basic:true}))}
+  vox(equip,-6.3,.35,-13.1,.7,.7,.7,"#f4f4f4");for(const [dx,dy] of [[-.15,.15],[.15,-.15],[0,0]])vox(equip,-6.3+dx,.35+dy,-12.74,.12,.12,.02,"#111");
+  if(G.round===2){
+    const S=G.sensors||{};
+    if(G.system==="turnkey"){ // one white cabinet with a branded screen: the ready-made GrowBox
+      vox(equip,8.4,1.6,-12.4,2.2,3.2,1.4,"#eef2f0");vox(equip,8.4,2.2,-11.68,1.6,.9,.05,mat("#5fd3e8",{basic:true}));vox(equip,8.4,.9,-11.68,1.2,.2,.05,"#2b2f33");
+    }else{ // a table with a small green circuit board and cables: the modular controller
+      vox(equip,8.4,.8,-12.4,2,.12,1.2,"#9a6a35");for(const x of [7.6,9.2])for(const z of [-12.9,-11.9])vox(equip,x,.4,z,.12,.8,.12,"#7a5a32");
+      vox(equip,8.2,.9,-12.3,.6,.06,.4,"#2e8b3a");vox(equip,8.7,.95,-12.2,.3,.12,.3,"#222");vox(equip,8.4,.5,-11.7,.05,.6,.05,"#d33");vox(equip,8.6,.5,-11.7,.05,.6,.05,"#33d");
+    }
+    if(S.camera){vox(equip,-8.6,2,12.4,.15,4,.15,"#555");vox(equip,-8.2,4.1,12.1,.7,.5,.9,"#111");vox(equip,-8.2,4.05,11.6,.35,.35,.15,"#3b6b8f")}
+    if(S.hyper){vox(equip,8.6,2.2,12.4,.18,4.4,.18,"#555");vox(equip,8.4,4.6,12.1,1,.7,1,"#2a2340");vox(equip,8.4,4.6,11.58,.8,.5,.05,new THREE.MeshBasicMaterial({map:T.rainbow}))}
+    if(S.lab){vox(equip,-3.5,.45,15.6,1.2,.9,.8,"#f4f4f4");vox(equip,-3.5,.5,16.01,.5,.15,.02,"#2a6aa6");vox(equip,-3.5,.5,16.01,.15,.5,.02,"#2a6aa6")}
+    if(S.scale){vox(equip,6,.3,15.2,1,.6,1,"#d0d4d6");vox(equip,6,.62,15.2,.8,.04,.8,"#9aa0a4")}
+  }
+  refreshAll();
+}
+function person(coat){
+  const p=new THREE.Group();
+  const legL=vox(p,-.17,.45,0,.28,.9,.3,"#2f3e66"),legR=vox(p,.17,.45,0,.28,.9,.3,"#2f3e66");
+  vox(p,0,1.3,0,.72,.85,.4,coat);vox(p,0,.95,0,.74,.12,.42,coat);
+  const armL=vox(p,-.5,1.3,0,.22,.8,.26,coat),armR=vox(p,.5,1.3,0,.22,.8,.26,coat);
+  vox(p,0,2.0,0,.5,.5,.5,"#d9a77c");vox(p,0,2.28,-.03,.54,.14,.56,"#3b2a1a");vox(p,0,2.05,.255,.38,.1,.02,"#5fd3e8");
+  p.userData={legL,legR,armL,armR,tx:0,tz:16,phase:0};
+  scene.add(p);return p;
+}
+const avatars={me:person("#f4f4f4")};
+avatars.me.position.set(0,0,16.5);
+function walkTo(i){const p=bedPos(i);avatars.me.userData.tx=p.x+.3;avatars.me.userData.tz=p.z+2.3}
+function stepPerson(p,dt){
+  const u=p.userData;const dx=u.tx-p.position.x,dz=u.tz-p.position.z;const d=Math.hypot(dx,dz);
+  if(d>.05){const sp=Math.min(d,dt*7);p.position.x+=dx/d*sp;p.position.z+=dz/d*sp;p.rotation.y=Math.atan2(dx,dz);u.phase+=dt*12}
+  else u.phase*=.8;
+  const s=Math.sin(u.phase)*.5;u.legL.rotation.x=s;u.legR.rotation.x=-s;u.armL.rotation.x=-s;u.armR.rotation.x=s;
+}
+
+/* ---- camera: drag to orbit, wheel/pinch to zoom, WASD to move ---- */
+const view={theta:.55,phi:.98,r:34,tx:0,ty:1,tz:-1,goalR:34};
+function placeCam(){
+  view.phi=clamp(view.phi,.25,1.45);view.r=clamp(view.r,10,70);
+  const {theta,phi,r}=view;
+  cam.position.set(view.tx+r*Math.sin(phi)*Math.sin(theta),view.ty+r*Math.cos(phi),view.tz+r*Math.sin(phi)*Math.cos(theta));
+  cam.lookAt(view.tx,view.ty,view.tz);
+}
+const ptrs=new Map();let drag=null;let pinch0=0;
+canvas.addEventListener("pointerdown",ev=>{canvas.setPointerCapture(ev.pointerId);ptrs.set(ev.pointerId,{x:ev.clientX,y:ev.clientY});
+  if(ptrs.size===1)drag={x:ev.clientX,y:ev.clientY,moved:0,btn:ev.button};
+  if(ptrs.size===2){const [a,b]=[...ptrs.values()];pinch0=Math.hypot(a.x-b.x,a.y-b.y);drag&&(drag.moved=99)}});
+canvas.addEventListener("pointermove",ev=>{
+  if(ptrs.has(ev.pointerId)){const p=ptrs.get(ev.pointerId);const dx=ev.clientX-p.x,dy=ev.clientY-p.y;p.x=ev.clientX;p.y=ev.clientY;
+    if(ptrs.size===2){const [a,b]=[...ptrs.values()];const d=Math.hypot(a.x-b.x,a.y-b.y);if(pinch0){view.r*=pinch0/d;pinch0=d}return}
+    if(drag){drag.moved+=Math.abs(dx)+Math.abs(dy);if(drag.moved>5){
+      if(drag.btn===2||ev.shiftKey){const s=view.r*.0016;view.tx-=(Math.cos(view.theta)*dx)*s;view.tz+=(Math.sin(view.theta)*dx)*s;view.tx-=Math.sin(view.theta)*dy*s;view.tz-=Math.cos(view.theta)*dy*s}
+      else{view.theta-=dx*.006;view.phi-=dy*.005}}}}
+  else hoverAt(ev.clientX,ev.clientY);
+});
+canvas.addEventListener("pointerup",ev=>{ptrs.delete(ev.pointerId);if(ptrs.size<2)pinch0=0;
+  if(drag&&drag.moved<=5&&ptrs.size===0){const i=pickAt(ev.clientX,ev.clientY);if(i!=null&&G&&overlayClosed())selectPlant(i);}
+  if(ptrs.size===0)drag=null});
+canvas.addEventListener("pointercancel",ev=>{ptrs.delete(ev.pointerId);drag=null});
+canvas.addEventListener("contextmenu",e=>e.preventDefault());
+canvas.addEventListener("wheel",ev=>{ev.preventDefault();view.r*=Math.exp(ev.deltaY*.0012)},{passive:false});
+const ray=new THREE.Raycaster();const v2=new THREE.Vector2();
+function pickAt(cx,cy){const r=canvas.getBoundingClientRect();v2.set((cx-r.left)/r.width*2-1,-(cy-r.top)/r.height*2+1);ray.setFromCamera(v2,cam);
+  const hits=ray.intersectObjects(pickables.filter(p=>p.parent.visible));return hits.length?hits[0].object.userData.bed:null}
+let hovered=null;
+function hoverAt(cx,cy){if(!G)return;const i=pickAt(cx,cy);hovered=i;canvas.style.cursor=i!=null?"pointer":"crosshair";}
+const keys=new Set();
+window.addEventListener("keydown",e=>{const t=e.target&&e.target.tagName;if(t==="INPUT"||t==="TEXTAREA"||typeof e.key!=="string")return;keys.add(e.key.toLowerCase())});
+window.addEventListener("keyup",e=>{if(typeof e.key==="string")keys.delete(e.key.toLowerCase())});
+window.addEventListener("blur",()=>keys.clear());
+
+function resize(){const w=canvas.clientWidth,h=canvas.clientHeight;if(!w||!h)return;if(canvas.width!==Math.floor(w*renderer.getPixelRatio())||canvas.height!==Math.floor(h*renderer.getPixelRatio())){renderer.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix()}}
+
+let last=performance.now();let ledBlink=0;
+function frame(now){
+  const dt=Math.min(.25,(now-last)/1000);last=now;
+  resize();
+  const mv=12*dt*(view.r/34);
+  if(keys.has("w")){view.tx-=Math.sin(view.theta)*mv;view.tz-=Math.cos(view.theta)*mv}
+  if(keys.has("s")){view.tx+=Math.sin(view.theta)*mv;view.tz+=Math.cos(view.theta)*mv}
+  if(keys.has("a")){view.tx-=Math.cos(view.theta)*mv;view.tz+=Math.sin(view.theta)*mv}
+  if(keys.has("d")){view.tx+=Math.cos(view.theta)*mv;view.tz-=Math.sin(view.theta)*mv}
+  view.tx=clamp(view.tx,-25,25);view.tz=clamp(view.tz,-25,25);
+  if(!G)view.theta+=dt*.05;
+  placeCam();
+  if(G){
+    tick(dt);
+    if(G.selected!=null&&G.selected<G.beds){const p=bedPos(G.selected);sel.position.set(p.x,.45,p.z);sel.visible=true}else sel.visible=false;
+    if(hovered!=null&&hovered!==G.selected&&hovered<G.beds){const p=bedPos(hovered);hov.position.set(p.x,.45,p.z);hov.visible=true}else hov.visible=false;
+    ledBlink+=dt;if(anim.leds.length&&ledBlink>(G.phase==="think"?.03:.18)){ledBlink=0;const m=anim.leds[Math.floor(Math.random()*anim.leds.length)];m.visible=!m.visible}
+    for(const tw of [anim.twin,anim.rough]){if(!tw)continue;const sp=G.phase==="think"?4:.6;tw.rotation.y+=dt*sp;tw.rotation.x+=dt*sp*.4}
+    stepPerson(avatars.me,dt);
+  }
+  renderer.render(scene,cam);
+  requestAnimationFrame(frame);
+}
+
+/* ================================================================
+   Game flow and interface
+   plan → (computer thinks) → plants grow for a week → look at results → plan again
+   ================================================================ */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const overlay=$("#overlay");
+const overlayClosed=()=>overlay.hidden;
+function openOverlay(html){overlay.innerHTML=`<div class="modal panel" role="dialog" aria-modal="true">${html}</div>`;overlay.hidden=false;overlay.scrollTop=0}
+function closeOverlay(){overlay.hidden=true;overlay.innerHTML="";ui()}
+function toast(msg,kind){const box=$("#toasts");const t=document.createElement("div");t.className="toast panel "+(kind||"");t.textContent=msg;box.appendChild(t);while(box.children.length>3)box.removeChild(box.firstChild);setTimeout(()=>t.remove(),kind==="gold"?5000:3800)}
+const canSpeak=typeof window.speechSynthesis!=="undefined"&&typeof window.SpeechSynthesisUtterance!=="undefined";
+function speak(text){if(!canSpeak)return;try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text.replace(/<[^>]+>/g,""));u.rate=.92;u.lang="en-GB";speechSynthesis.speak(u)}catch(e){}}
+const sayBtn=id=>canSpeak?`<button class="btn small speak" id="${id}" title="Read this page aloud">Read aloud</button>`:"";
+function localGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
+function localSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+
+const DAY_MS={think:900,grow:650,setup:600,wait:600};
+const BATCH_COLS=["#e8e1c8","#f2b33d","#7fd650","#5fd3e8","#d685ff","#ff7a66","#ffd84a","#9bb0ff","#c9a26a","#ffffff"];
+let G=null;
+
+function newGame(team){
+  G={team,day:0,money:START_MONEY,spent:0,beds:BEDS_START,own:{you:1,random:1},planner:"you",planFrom:"you",
+    plan:[],plants:[],data:[],sims:[],batches:[],phase:"build",phaseT:0,phaseDays:0,selected:0,firstGold:null,runId:Date.now().toString(36)+Math.floor(rng()*1e6).toString(36)};
+  G.plan=[...Array(BEDS_MAX)].map(randCond);   // a spread to start from
+}
+const thinkDays=()=>PLANNER[G.planFrom]?PLANNER[G.planFrom].days:0;
+const batchCost=()=>G.beds*PLANT_COST;
+const daysLeft=()=>SEASON_DAYS-G.day;
+const waitDays=()=>G.round===2?r2WaitDays():0;
+const canRun=()=>daysLeft()>=thinkDays()+GROW_DAYS+waitDays();
+const best=()=>G.data.filter(d=>d.y!=null).reduce((a,d)=>!a||d.y>a.y?d:a,null);
+
+/* ---------- planning ---------- */
+function setPlanner(id){
+  G.planner=id;
+  if(id==="you"){G.planFrom="you";ui();return}
+  const cs=plan(id,G.data,G.beds);
+  for(let i=0;i<G.beds;i++)G.plan[i]=cs[i];
+  G.planFrom=id;ui();
+}
+function editPlan(i,k,x){G.plan[i][k]=clamp(x,0,1);if(G.planFrom!=="you"){G.planFrom="you";G.planner="you"}refreshPlanRows()}
+function fillAll(fn){for(let i=0;i<G.beds;i++)G.plan[i]=fn(i);G.planFrom="you";G.planner="you";ui()}
+function frameView(){const rows=Math.ceil(G.beds/4);view.r=rows<=1?22:rows<=2?28:rows<=3?32:38;view.tz=rows<=1?ROWZ[0]:rows<=2?0:rows<=4?0:0;view.tx=0}
+/* ---------- running a batch ---------- */
+function startBatch(){
+  if(G.phase!=="plan")return;
+  if(!canRun()){finishSeason();return}
+  G.cur={n:G.batches.length+1,planner:G.planFrom,beds:G.beds,conds:G.plan.slice(0,G.beds).map(c=>c.slice())};
+  if(G.cur.planner==="rough"||G.cur.planner==="twin"){const sims=simulate(G.cur.planner,G.cur.conds,G.cur.n);G.cur.simFrom=G.sims.length;G.cur.simCount=sims.length;G.sims.push(...sims)}
+  for(let i=0;i<24;i++)G.plants[i]=null;refreshAll();
+  if(G.round===2)r2PrepareBatch();
+  if(thinkDays()>0)startPhase("think",thinkDays());
+  else beginGrow();
+  ui();
+}
+function startPhase(name,days){G.phase=name;G.phaseDays=days;G.phaseT=0;G.phaseStart=G.day}
+/* the twin screens many ideas in silico while it computes; the planted ones are revealed last */
+function simulate(planner,conds,batch){
+  const pred=PCTX?(planner==="twin"?c=>PCTX.detailed(c)*PCTX.ymax:c=>PCTX.rough(c)*PCTX.ymax):(planner==="twin"?c=>heightOf([c[0]+.06,c[1]-.05,c[2]+.07,c[3]-.04])*.95:c=>4+roughPrior(c)*HMAX);
+  const total=PLANNER[planner].days*30;const out=[];
+  const top=PCTX?PCTX.ymax:75;
+  for(let i=0;i<total;i++){const c=i%2?randCond():mutate(conds[i%conds.length],.16);out.push({batch,y:clamp(pred(c),0,top),chosen:false,planner})}
+  for(const c of conds)out.push({batch,y:clamp(pred(c),0,top),chosen:true,planner});
+  return out;
+}
+function beginGrow(){
+  startPhase("grow",GROW_DAYS);G.cur.plantDay=G.day;
+  if(G.round===2)r2Grow();
+  else G.cur.conds.forEach((c,i)=>{const h=grow(c);G.plants[i]={c,h,y:h,frac:.04,gold:h>=GOLD}});
+  refreshAll();
+}
+function tick(dt){
+  if(!["setup","think","grow","wait"].includes(G.phase))return;
+  if(!overlayClosed())return;
+  const ms=DAY_MS[G.phase]/(G.fast?3:1);
+  G.phaseT+=dt*1000;
+  if(G.phase==="grow"){const f=clamp(G.phaseT/(ms*GROW_DAYS),0,1);const e=1-Math.pow(1-f,2);for(let i=0;i<G.beds;i++){const p=G.plants[i];if(p)p.frac=Math.max(.04,e)}
+    if(Math.floor(G.phaseT/120)!==Math.floor((G.phaseT-dt*1000)/120))growVisual()}
+  const d=Math.min(G.phaseDays,Math.floor(G.phaseT/ms));
+  if(G.phaseStart+d!==G.day){G.day=G.phaseStart+d;updateClock()}
+  if(G.phase==="think"&&G.cur.simCount){const shown=Math.floor(clamp(G.phaseT/(ms*G.phaseDays),0,1)*G.cur.simCount);if(shown!==G.cur.simShown){G.cur.simShown=shown;drawDots($("#dots"))}}
+  if(G.phaseT>=ms*G.phaseDays){
+    G.day=G.phaseStart+G.phaseDays;
+    if(G.phase==="setup"){G.phase="plan";toast("Your lab is ready. Plant the next batch!");if(G.planner!=="you")setPlanner(G.planner);ui()}
+    else if(G.phase==="think"){if(G.cur.simCount){G.cur.simShown=G.cur.simCount;drawDots($("#dots"))}beginGrow()}
+    else if(G.phase==="grow"&&G.cur.wait>0){for(let i=0;i<G.beds;i++)if(G.plants[i])G.plants[i].frac=1;refreshAll();startPhase("wait",G.cur.wait);ui()}
+    else endBatch();
+  }
+}
+function endBatch(){
+  if(G.round===2)r2Finalise();
+  const ys=[];let gold=0;
+  for(let i=0;i<G.cur.beds;i++){const p=G.plants[i];p.frac=1;if(p.dead)continue;G.data.push(Object.assign({c:p.c.slice(),y:p.y,batch:G.cur.n,day:G.day,planner:G.cur.planner},p.extra||{}));ys.push(p.y??0);if(p.gold)gold++}
+  if(!ys.length)ys.push(0);
+  G.batches.push({n:G.cur.n,planner:G.cur.planner,beds:G.cur.beds,day:G.day,ys,gold,thinkDays:PLANNER[G.cur.planner]?PLANNER[G.cur.planner].days:0});
+  if(gold&&G.firstGold==null)G.firstGold=G.day;
+  refreshAll();
+  const mx=Math.max(...ys);
+  if(G.round===2)toast(gold?`Batch ${G.cur.n}: ${gold} of ${G.cur.beds} plants are exceptional!`:`Batch ${G.cur.n}: best health score ${Math.round(mx)}. None reached ${G.thrR}.`,gold?"gold":"");
+  else toast(gold?`Batch ${G.cur.n}: ${gold} of ${G.cur.beds} plants are exceptional (≥ ${GOLD} cm)!`:`Batch ${G.cur.n}: tallest plant ${Math.round(mx)} cm. None reached ${GOLD} cm.`,gold?"gold":"");
+  G.phase="plan";G.cur=null;
+  // the next plan: an algorithm proposes again; "you" keeps your conditions so you can adjust them
+  if(G.planner!=="you")setPlanner(G.planner);
+  const b=best();G.selected=G.data.length?G.data.length-ys.length+ys.indexOf(Math.max(...ys)):0;G.selected=ys.indexOf(Math.max(...ys));
+  ui();
+  if(G.round===2&&r2Review())return;
+  if(!canRun()){setTimeout(finishSeason,1400)}
+}
+function selectPlant(i){if(i>=G.beds)return;G.selected=i;walkTo(i);ui()}
+
+/* ---------- top bar ---------- */
+function updateClock(){const i=$("#daybar i");if(i&&G)i.style.width=Math.min(100,G.day/SEASON_DAYS*100)+"%";const d=$("#dayval");if(d&&G)d.textContent=G.day;if(G&&["grow","think","setup","wait"].includes(G.phase))renderAction()}
+function renderTop(){
+  if(G.round===2)return r2RenderTop();
+  const gold=G.data.filter(d=>d.y>=GOLD).length;
+  $("#top").innerHTML=`
+   <div class="panel cell"><span class="label">Phase 2: Run · ${SEASON_DAYS} days</span><span class="big">Day <span id="dayval">${G.day}</span><span style="font-size:13px;color:var(--muted)"> / ${SEASON_DAYS}</span></span><div id="daybar"><i></i></div></div>
+   <div class="panel cell"><span class="label">${esc(G.team)}'s lab</span><span class="big" style="font-size:16px"><span style="color:var(--amber)">${G.beds} bed${G.beds>1?"s":""}</span> · <span style="color:var(--magenta)">${ownedPlanners().filter(p=>p.price>0).map(p=>p.name).join(", ")||"no planner bought"}</span></span></div>
+   <div class="panel cell"><span class="label">Exceptional plants</span><span class="big" style="color:var(--gold)">${gold}</span></div>
+   <div id="ctrls" class="panel">${sayBtn("b-say2")}<button class="btn small" id="b-fast" title="Animation speed">${G.fast?"Speed: fast":"Speed: normal"}</button><button class="btn small" id="b-finish">Finish</button></div>`;
+  $("#b-fast").onclick=()=>{G.fast=!G.fast;ui()};
+  if($("#b-say2"))$("#b-say2").onclick=()=>{const b=best();speak(`Day ${G.day} of ${SEASON_DAYS}. You have ${gold} exceptional plant${gold===1?"":"s"}. ${b?`Your tallest plant is ${Math.round(b.y)} centimetres. `:""}On the left, set the conditions for each bed, or choose a planner. Then press Plant and grow.`)};
+  $("#b-finish").onclick=()=>{if(G.phase==="plan")finishSeason()};
+  updateClock();
+  document.documentElement.style.setProperty("--toph",$("#top").offsetHeight+"px");
+}
+
+/* ---------- left: plan the next batch ---------- */
+const ownedPlanners=()=>PLANNERS.filter(p=>G.own[p.id]);
+function bar(x,col){return `<span class="mini"><i style="width:${Math.round(x*100)}%;background:${col}"></i></span>`}
+function renderLeft(){
+  const busy=G.phase!=="plan";
+  const sel=Math.min(G.selected??0,G.beds-1);const c=G.plan[sel];
+  const plannerCards=ownedPlanners().map(p=>{const on=G.planner===p.id;
+    const tag=p.days?`+${p.days} day${p.days>1?"s":""} per batch`:"instant";
+    return `<button class="pl ${on?"on":""}" data-pl="${p.id}" ${busy?"disabled":""} title="${esc(p.what)}">
+      <span class="pn">${p.name}</span><span class="pm">${tag}</span></button>`}).join("");
+  const rows=G.plan.slice(0,G.beds).map((c,i)=>`<button class="prow ${i===sel?"on":""}" data-row="${i}" ${busy?"disabled":""}><span class="pi">${i+1}</span>${KNOBS.map((k,j)=>bar(c[j],k.col)).join("")}</button>`).join("");
+  $("#left").innerHTML=`
+   <section class="panel card"><h3>Next batch <span style="color:var(--amber)">· N = ${G.beds}</span></h3>
+     <div class="kh"><span></span>${KNOBS.map(k=>`<span style="color:${k.col}">${k.name}</span>`).join("")}</div>
+     <div class="prows">${rows}</div>
+     <div class="editor"><span class="label">Bed ${sel+1}</span>
+       ${KNOBS.map((k,j)=>`<label class="sl"><span>${k.name}</span><input type="range" id="k${j}" min="0" max="1" step="0.01" value="${c[j]}" ${busy?"disabled":""} style="accent-color:${k.col}"><b class="num" id="kv${j}">${fmtK(j,c[j])}</b><span class="u">${k.unit}</span></label>`).join("")}
+     </div>
+     ${G.beds>1?`<div class="rowbtns">
+       <button class="btn small" id="b-copy" ${busy?"disabled":""}>Copy bed ${sel+1} to all</button>
+       <button class="btn small" id="b-rand" ${busy?"disabled":""}>Randomise all</button>
+       <button class="btn small" id="b-best" ${busy||!G.data.length?"disabled":""}>Best + small changes</button></div>`:""}</section>
+   <section class="panel card"><h3>Who sets them? <span style="color:var(--magenta)">p</span></h3>
+     <div class="planners">${plannerCards}</div></section>`;
+  document.querySelectorAll("[data-pl]").forEach(b=>b.onclick=()=>setPlanner(b.dataset.pl));
+  document.querySelectorAll("[data-row]").forEach(b=>b.onclick=()=>selectPlant(+b.dataset.row));
+  KNOBS.forEach((k,j)=>{const s=$("#k"+j);s.oninput=()=>{editPlan(sel,j,+s.value);$("#kv"+j).textContent=fmtK(j,+s.value)}});
+  if($("#b-copy"))$("#b-copy").onclick=()=>fillAll(()=>G.plan[sel].slice());if($("#b-rand"))$("#b-rand").onclick=()=>fillAll(randCond);if($("#b-best"))$("#b-best").onclick=()=>{const b=best();if(b)fillAll(i=>i===0?b.c.slice():mutate(b.c,.07))};
+}
+function refreshPlanRows(){const sel=G.selected??0;const row=document.querySelector(`[data-row="${sel}"]`);if(row)row.innerHTML=`<span class="pi">${sel+1}</span>${KNOBS.map((k,j)=>bar(G.plan[sel][j],k.col)).join("")}`;
+  document.querySelectorAll("[data-pl]").forEach(b=>b.classList.toggle("on",b.dataset.pl===G.planner))}
+/* ---------- right: results ---------- */
+function renderRight(){
+  if(G.round===2)return r2RenderRight();
+  const b=best();
+  $("#right").innerHTML=`
+   <section class="panel card"><h3>Every plant you have grown</h3>
+     <canvas class="chart" id="dots" style="height:300px" role="img" aria-label="Height of every plant, batch by batch"></canvas>
+     ${b?`<p class="small">Tallest so far: <b style="color:var(--ink)">${Math.round(b.y)} cm</b></p>`:""}</section>`;
+  drawDots($("#dots"));
+}
+function prepCanvas(cv){if(!cv)return null;const dpr=window.devicePixelRatio||1;const W=cv.clientWidth,H=cv.clientHeight;if(!W)return null;cv.width=W*dpr;cv.height=H*dpr;const g=cv.getContext("2d");g.scale(dpr,dpr);return {g,W,H}}
+function drawDots(cv,big){
+  const c=prepCanvas(cv);if(!c)return;const {g,W,H}=c;
+  const FONT=f=>`${f}px Lexend, Verdana, sans-serif`;
+  const nb=Math.max(6,G.batches.length+(G.cur?1:0));
+  const R2=G.round===2,GL=R2?G.thr:GOLD;
+  const YMAX=R2?135:90;   // headroom above the tallest plants for the legend
+  const L=46,R=8,T=8,B=40;const pw=W-L-R,ph=H-T-B;const X=b=>L+(b-.5)/nb*pw,Y=v=>T+(1-v/YMAX)*ph;
+  g.fillStyle="#0f1512";g.fillRect(0,0,W,H);g.font=FONT(13);g.fillStyle="#c3cfbe";g.strokeStyle="#2a3530";g.lineWidth=1;
+  g.textAlign="right";g.textBaseline="middle";for(const v of (R2?[0,25,50,75,100]:[0,20,40,60])){g.beginPath();g.moveTo(L,Y(v));g.lineTo(L+pw,Y(v));g.stroke();g.fillText(v,L-6,Y(v))}
+  g.textAlign="center";g.textBaseline="top";for(let b=1;b<=nb;b++)g.fillText(b,X(b),T+ph+4);
+  g.fillText("Batch",L+pw/2,T+ph+21);
+  g.save();g.translate(13,T+ph*.62);g.rotate(-Math.PI/2);g.textBaseline="middle";g.fillText(R2?"Health score":"Height (cm)",0,0);g.restore();
+  // the exceptional line
+  g.strokeStyle="#ffd84a";g.lineWidth=1.5;g.setLineDash([6,4]);g.beginPath();g.moveTo(L,Y(GL));g.lineTo(L+pw,Y(GL));g.stroke();g.setLineDash([]);g.lineWidth=1;
+  const col=pw/nb;const rs=mulberry32(11);const hasSims=G.sims.length>0;
+  G.sims.forEach((d,i)=>{const jx=(rs()-.5)*col*.42;
+    if(G.cur&&d.batch===G.cur.n&&i-G.cur.simFrom>=(G.cur.simShown||0))return;
+    const x=X(d.batch)-col*.16+jx;g.globalAlpha=d.chosen?1:.5;g.strokeStyle=d.chosen?"#ffffff":"#b9c6b3";g.lineWidth=d.chosen?1.8:1;g.beginPath();g.arc(x,Y(d.y),d.chosen?3.8:2.6,0,7);g.stroke()});
+  g.globalAlpha=1;g.lineWidth=1;
+  const rr=mulberry32(5);
+  for(const d of G.data){if(d.y==null)continue;const x=X(d.batch)+(hasSims?col*.3:0)+(rr()-.5)*col*(hasSims?.2:.6);const gold=d.y>=GL;
+    g.fillStyle=gold?"#ffd84a":"#7fd650";g.beginPath();g.arc(x,Y(d.y),gold?(big?5.5:4.5):(big?4:3.4),0,7);g.fill();
+    if(gold){g.strokeStyle="#0f1512";g.lineWidth=1;g.stroke()}}
+  // legend, top right
+  const items=[{t:"Plant",draw:(x,y)=>{g.fillStyle="#7fd650";g.beginPath();g.arc(x,y,4,0,7);g.fill()}},
+    {t:R2?`Exceptional (score ${G.thrR} or more)`:`Exceptional (${GOLD} cm or more)`,draw:(x,y)=>{g.fillStyle="#ffd84a";g.beginPath();g.arc(x,y,5,0,7);g.fill()}}];
+  if(hasSims){items.push({t:"Twin's prediction",draw:(x,y)=>{g.strokeStyle="#b9c6b3";g.lineWidth=1.2;g.beginPath();g.arc(x,y,3.5,0,7);g.stroke()}});
+    items.push({t:"Twin's pick",draw:(x,y)=>{g.strokeStyle="#fff";g.lineWidth=2;g.beginPath();g.arc(x,y,4,0,7);g.stroke()}})}
+  g.font=FONT(12);const lh=17;let wmax=0;for(const it of items)wmax=Math.max(wmax,g.measureText(it.t).width);
+  const bw=wmax+30,bh=items.length*lh+8,bx=L+pw-bw-4,by=T+4;
+  g.fillStyle="rgba(15,21,18,.92)";g.fillRect(bx,by,bw,bh);g.strokeStyle="#4b5d54";g.lineWidth=1;g.strokeRect(bx+.5,by+.5,bw-1,bh-1);
+  items.forEach((it,i)=>{const y=by+4+lh*i+lh/2;it.draw(bx+12,y);g.fillStyle="#f1f4ea";g.textAlign="left";g.textBaseline="middle";g.fillText(it.t,bx+24,y)});
+  g.lineWidth=1;g.globalAlpha=1;
+}
+
+/* ---------- action bar ---------- */
+function renderAction(){
+  const a=$("#action");
+  if(G.phase==="think"){a.innerHTML=`<span class="spin"></span> ${PLANNER[G.cur.planner].name} is computing…`;return}
+  if(G.phase==="grow"){a.innerHTML=`<span class="spin g"></span> Growing… day ${Math.min(GROW_DAYS,G.day-G.cur.plantDay+1)} of ${GROW_DAYS}`;return}
+  if(G.phase==="setup"){a.innerHTML=`<span class="spin"></span> Setting up your lab… day ${G.day+1} of ${G.phaseDays}`;return}
+  if(G.phase==="wait"){a.innerHTML=`<span class="spin"></span> ${G.cur.waitWhy||"Waiting"}… ${G.phaseStart+G.phaseDays-G.day} day(s) left`;return}
+  if(!canRun()){a.innerHTML=`<button class="btn primary big" id="b-go">See season results</button>`;$("#b-go").onclick=finishSeason;return}
+  const td=thinkDays(),wd=waitDays();
+  a.innerHTML=`<button class="btn primary big" id="b-go">Plant & grow ▶</button><span class="small">${td?`${td} day${td>1?"s":""} computing + `:""}${GROW_DAYS} days${wd?` + ${wd} days lab`:""}</span>`;
+  if($("#b-go"))$("#b-go").onclick=startBatch;
+}
+
+/* ---------- master render ---------- */
+let uiQueued=false;
+function ui(){if(uiQueued)return;uiQueued=true;requestAnimationFrame(()=>{uiQueued=false;
+  const on=!!G&&G.phase!=="build";for(const s of ["#top","#left","#right","#action"])$(s).hidden=!on;$("#coach").hidden=true;if(!on)return;
+  renderTop();renderLeft();renderRight();renderAction()})}
+window.addEventListener("resize",()=>{if(G)ui()});
+window.addEventListener("keydown",e=>{if(e.target.tagName==="INPUT"||!G||!overlayClosed())return;if(e.key==="Enter"&&G.phase==="plan")startBatch()});
+
+/* ---------- screens ---------- */
+function openTitle(){
+  G=null;PCTX=null;syncEquipment();ui();
+  openOverlay(`<div class="row" style="justify-content:space-between"><span class="label">A teaching game about self-driving labs</span>${sayBtn("b-sayT")}</div>
+   <h2>Self-Driving Greenhouse</h2>
+   <p>Build a greenhouse that runs experiments by itself, and use it to grow exceptional basil.</p>
+   <div class="cols">
+     <button class="choice" id="r1"><h3>Round 1: Grow tall plants</h3><span class="what">Health = height. Choose more beds or a smarter planner, then run your lab for 49 days.</span><span class="note">About 10 minutes</span></button>
+     <button class="choice" id="r2"><h3>Round 2: What is a healthy plant?</h3><span class="what">You decide what "healthy" means. Pick sensors to measure it. Buy a ready-made system or build your own from parts.</span><span class="note">About 15 minutes · best after Round 1</span></button>
+   </div>
+   <div class="row"><button class="btn" id="b-board">Class leaderboard</button>${typeof LIVE!=="undefined"&&LIVE?`<span class="small">Class: ${esc(LIVE.name)}</span>`:""}</div>`);
+  if($("#b-sayT"))$("#b-sayT").onclick=()=>speak("Self-driving greenhouse. Round 1: grow tall plants. Choose more beds or a smarter planner. Round 2: what is a healthy plant? You decide what healthy means, pick sensors, and buy a ready-made system or build your own from parts.");
+  $("#r1").onclick=()=>openBuild(localGet("sdl-team")||"");
+  $("#r2").onclick=()=>openDefine(localGet("sdl-team")||"");
+  $("#b-board").onclick=()=>openBoard("title");
+}
+/* Phase 1: spend the grant. Phase 2: run the campaign with what you built. */
+function openBuild(team){
+  newGame(team);PCTX=null;syncEquipment();frameView();ui();
+  const extras=PLANNERS.filter(p=>p.price>0);
+  const render=()=>{
+    const spent=(G.beds-BEDS_START)*BEDS_PRICE+extras.reduce((a,p)=>a+(G.own[p.id]?p.price:0),0);
+    G.money=START_MONEY-spent;G.spent=spent;
+    const keepScroll=overlay.hidden?0:overlay.scrollTop;
+    openOverlay(`<div class="row" style="justify-content:space-between"><div class="eyebrow"><span class="label" style="color:var(--leaf)">Phase 1 of 2: Build</span><span class="label">Phase 2: Run</span></div>${sayBtn("b-say")}</div>
+     <h2>You won ${eur(START_MONEY)} to build a self-driving greenhouse!</h2>
+     <div class="goalbox"><ul class="goal">
+       <li><b>Your goal:</b> grow healthy basil plants.</li>
+       <li>We measure health as <b>height</b>.</li>
+       <li>A plant of <b style="color:var(--gold)">${GOLD} cm or more</b> is <b style="color:var(--gold)">exceptional</b>.</li>
+       <li>In phase 2 you have <b>${SEASON_DAYS} days</b>. Grow as many exceptional plants as you can.</li></ul></div>
+     <p><b>Spend the money now.</b> You cannot buy more later.</p>
+     <div class="buildgrid">
+       <section class="bcol"><h3 style="color:var(--amber)">More plants (N)</h3>
+         <p class="small">1 bed grows 1 plant every ${GROW_DAYS} days. Your first bed is free.</p>
+         <div class="stepper"><button class="btn" id="b-minus" ${G.beds<=BEDS_START?"disabled":""} aria-label="One bed fewer">−</button><span class="num bigbeds">${G.beds}</span><span>bed${G.beds>1?"s":""}</span><button class="btn" id="b-plus" ${G.beds>=BEDS_MAX||G.money<BEDS_PRICE?"disabled":""} aria-label="One bed more">+</button></div>
+         <p class="small">Each extra bed: ${eur(BEDS_PRICE)}</p></section>
+       <section class="bcol"><h3 style="color:var(--magenta)">Smarter planning (p)</h3>
+         <p class="small">A planner picks the growing conditions. "You decide" and "Random" are free. Smart planners cost money, and some need extra days to think.</p>
+         <div class="buylist">${extras.map(p=>{const on=!!G.own[p.id];const can=on||G.money>=p.price;return `<button class="choice ${on?"on":""}" data-buy="${p.id}" ${can?"":"disabled"}><h3>${p.name}<span class="price">${eur(p.price)}</span></h3><span class="what">${p.what}</span><span class="note">${p.days?`Thinks ${p.days} day${p.days>1?"s":""} before each batch`:"No waiting"}</span></button>`}).join("")}</div></section>
+     </div>
+     <div class="total">Money left: ${eur(G.money)} of ${eur(START_MONEY)}</div>
+     <div class="row"><label class="label" for="team">Team name</label><input id="team" type="text" maxlength="24" placeholder="e.g. Basil Instinct" value="${esc(G.team)}"></div>
+     <div class="row"><button class="btn primary big" id="b-build">Build it and start phase 2 ▶</button><button class="btn" id="b-board">Class leaderboard</button></div>`);
+    overlay.scrollTop=keepScroll;
+    if($("#b-say"))$("#b-say").onclick=()=>speak(`You won ${START_MONEY} dollars to build a self-driving greenhouse. Your goal: grow healthy basil plants. We measure health as height. A plant of ${GOLD} centimetres or more is exceptional. In phase 2 you have ${SEASON_DAYS} days. Grow as many exceptional plants as you can. Spend the money now. You can buy more beds, for ${BEDS_PRICE} dollars each, so you grow more plants at once. Or you can buy a smarter planner, which picks better growing conditions. Smart planners cost money, and some need extra days to think. You have ${G.money} dollars left.`);
+    const keepTeam=()=>{G.team=$("#team").value};
+    $("#b-minus").onclick=()=>{keepTeam();G.beds=Math.max(BEDS_START,G.beds-1);syncEquipment();frameView();render()};
+    $("#b-plus").onclick=()=>{keepTeam();if(G.money>=BEDS_PRICE&&G.beds<BEDS_MAX){G.beds++;syncEquipment();frameView()}render()};
+    document.querySelectorAll("[data-buy]").forEach(b=>b.onclick=()=>{keepTeam();const id=b.dataset.buy;if(G.own[id])delete G.own[id];else if(G.money>=PLANNER[id].price)G.own[id]=1;syncEquipment();render()});
+    $("#b-board").onclick=()=>openBoard("title");
+    $("#b-build").onclick=()=>{const t=($("#team").value||"").trim()||"Team "+(100+Math.floor(rng()*900));localSet("sdl-team",t);G.team=t;startCampaign()};
+  };
+  render();
+}
+function startCampaign(){
+  G.phase="plan";
+  const smart=["twin","rough","bo","evo"].find(id=>G.own[id]);
+  closeOverlay();syncEquipment();frameView();
+  if(smart)setPlanner(smart);else{G.planner="you";G.planFrom="you"}
+  toast(`Phase 2: your greenhouse is built. ${SEASON_DAYS} days start now.`);
+  ui();
+}
+
+/* ---------- end of season ---------- */
+function curve(g,X,Y,lam,col,w,dash){g.strokeStyle=col;g.lineWidth=w;g.setLineDash(dash||[]);g.beginPath();for(let i=0;i<=120;i++){const t=i/120*SEASON_DAYS;const v=1-Math.exp(-lam*t);i?g.lineTo(X(t),Y(v)):g.moveTo(X(t),Y(v))}g.stroke();g.setLineDash([])}
+function seasonNumbers(){
+  const plants=G.data.length;const gold=G.data.filter(d=>d.y>=GOLD).length;
+  const N=plants/Math.max(1,G.day)*7;                       // plants per week actually achieved
+  const p=plants?gold/plants:0;
+  return {plants,gold,N,p};
+}
+function drawSeasonCurves(cv){
+  const c=prepCanvas(cv);if(!c)return;const {g,W,H}=c;const s=seasonNumbers();
+  const L=40,R=10,T=10,B=26;const pw=W-L-R,ph=H-T-B;const X=t=>L+t/SEASON_DAYS*pw,Y=v=>T+(1-v)*ph;
+  g.fillStyle="#0f1512";g.fillRect(0,0,W,H);g.font="14px Lexend, Verdana, sans-serif";g.fillStyle="#a3b39d";g.strokeStyle="#2a3530";
+  g.textAlign="right";g.textBaseline="middle";for(const v of [0,.2,.4,.6,.8,1]){g.beginPath();g.moveTo(L,Y(v));g.lineTo(L+pw,Y(v));g.stroke();g.fillText(Math.round(v*100)+"%",L-5,Y(v))}
+  g.textAlign="center";g.textBaseline="top";for(const t of [0,7,14,21,28,35,42])g.fillText(t,X(t),T+ph+6);g.textAlign="right";g.fillText("49 days",L+pw,T+ph+6);
+  const lam=(N,p)=>-(N/7)*Math.log(1-Math.min(p,.999));
+  const pYou=Math.max(s.p,.002),pR=P_RANDOM;
+  const n0=BEDS_START*7/(GROW_DAYS),nY=Math.max(n0,s.N);
+  curve(g,X,Y,lam(n0,pR),"#3a9a3a",2.5);
+  curve(g,X,Y,lam(nY,pR),"#6ab0de",2.5);
+  curve(g,X,Y,lam(n0,pYou),"#2a3fa8",2.5);
+  curve(g,X,Y,lam(nY,pYou),"#ef4a52",3);
+  if(G.firstGold!=null){g.fillStyle="#ffd84a";g.font="bold 18px sans-serif";g.textAlign="center";g.textBaseline="middle";g.fillText("★",X(G.firstGold),Y(1-Math.exp(-lam(nY,pYou)*G.firstGold)))}
+}
+function drawLandscape(cv){
+  const c=prepCanvas(cv);if(!c)return;const {g,W,H}=c;
+  const L=44,R=10,T=10,B=30;const pw=W-L-R,ph=H-T-B;const n=60;
+  for(let i=0;i<n;i++)for(let j=0;j<n;j++){const w=(i+.5)/n,l=(j+.5)/n;
+    // best possible height for this water and light (fertiliser and temperature at their best)
+    const h=Math.max(heightOf([w,l,OPT.f,OPT.t]),heightOf([w,l,DECOY[2],DECOY[3]]));
+    const u=clamp((h-4)/(HMAX-4),0,1);g.fillStyle=h>=GOLD?"#6b5a12":lerpHex("#141c18","#3f6b2a",u);g.fillRect(L+i/n*pw,T+(1-(j+1)/n)*ph,pw/n+.6,ph/n+.6)}
+  for(const d of G.data){g.fillStyle=d.y>=GOLD?"#ffd84a":"#eef3e6";g.globalAlpha=d.y>=GOLD?1:.65;g.beginPath();g.arc(L+d.c[0]*pw,T+(1-d.c[1])*ph,3,0,7);g.fill()}
+  g.globalAlpha=1;g.fillStyle="#a3b39d";g.font="14px Lexend, Verdana, sans-serif";g.textAlign="center";g.textBaseline="top";g.fillText("Water →",L+pw/2,T+ph+8);
+  g.textAlign="left";g.fillText("0",L,T+ph+8);g.textAlign="right";g.fillText("500 mL/day",L+pw,T+ph+8);
+  g.save();g.translate(14,T+ph/2);g.rotate(-Math.PI/2);g.textAlign="center";g.textBaseline="middle";g.fillText("Light →",0,0);g.restore();
+}
+function finishSeason(){
+  if(!G||G.phase!=="plan")return;
+  if(G.round===2)return r2Finish();
+  G.phase="done";ui();
+  const s=seasonNumbers();const b=best();
+  const code=encodeResult();G.code=code;
+  openOverlay(`<div class="row" style="justify-content:space-between"><span class="label">Day ${G.day}: season over</span><div class="row">${sayBtn("b-say3")}<button class="btn" id="b-r2top">Round 2 ▶</button></div></div><h2>${esc(G.team)}: ${s.gold} exceptional plant${s.gold===1?"":"s"}</h2>
+   <div class="stats">
+     <div class="stat"><div class="v" style="color:var(--gold)">${G.firstGold==null?"–":"day "+G.firstGold}</div><div class="k">First exceptional plant</div></div>
+     <div class="stat"><div class="v" style="color:var(--amber)">${s.plants}</div><div class="k">Plants grown (N·t)</div></div>
+     <div class="stat"><div class="v" style="color:var(--magenta)">${(s.p*100).toFixed(1)} %</div><div class="k">Exceptional (p). Random: ${(P_RANDOM*100).toFixed(1)} %</div></div>
+   </div>
+   <h3>Your lab on the curve from the paper</h3>
+   <p>Chance of having found an exceptional plant by day t, <span class="num" style="color:var(--gold)">P = 1 − (1 − p)<sup>N·t</sup></span>, with your N and p.</p>
+   <canvas class="wide" id="curves"></canvas>
+   <div class="legend"><span style="--c:#3a9a3a">1 bed, random</span><span style="--c:#6ab0de">Your beds, random</span><span style="--c:#2a3fa8">1 bed, your planning</span><span style="--c:#ef4a52">Your lab</span></div>
+   <h3>Where the tall plants were</h3>
+   <p class="small">Tallest plant possible for each water and light. Gold: exceptional is possible here. Dots: your plants.</p>
+   <canvas class="wide" id="land" style="height:280px"></canvas>
+   <h3>Class leaderboard</h3>
+   <div class="row"><span class="code" id="code">${code}</span><button class="btn small" id="b-copy">Copy</button></div>
+   <p class="small" id="post-status">Posting your result…</p>
+   <h3>Next: Round 2</h3>
+   <p>Is height really the best measure of a healthy plant? In Round 2 you decide what healthy means, pick sensors, and choose a ready-made or a modular lab.</p>
+   <div class="row"><button class="btn primary big" id="b-r2">Go to Round 2 ▶</button><button class="btn" id="b-again">Play Round 1 again</button><button class="btn" id="b-board">Open leaderboard</button><button class="btn" id="b-home">Start screen</button></div>`);
+  drawSeasonCurves($("#curves"));drawLandscape($("#land"));
+  if($("#b-say3"))$("#b-say3").onclick=()=>speak(`Season over. You grew ${s.plants} plants. ${s.gold} were exceptional. ${G.firstGold==null?"None reached 40 centimetres.":`The first one came on day ${G.firstGold}.`} The curve shows your chance of finding an exceptional plant over time. More beds raise N. A smarter planner raises p. The map shows where tall plants were possible, and where your plants were.`);
+  $("#b-again").onclick=()=>openBuild(G.team);
+  $("#b-r2").onclick=$("#b-r2top").onclick=()=>openDefine(G.team);
+  $("#b-home").onclick=openTitle;
+  $("#b-board").onclick=()=>openBoard("end");
+  $("#b-copy").onclick=()=>{try{navigator.clipboard.writeText(code).then(()=>toast("Code copied."),()=>{})}catch(e){}};
+  submitResult(code);
+}
+
+/* ================================================================
+   ROUND 2 — What is a healthy plant?
+   Step 1 Define: weigh four properties into a health score (any number of objectives)
+   Step 2 Build:  turnkey system or modular parts; sensors decide what you can see
+   Step 3 Run:    49 days, setup time, lab waits, breakdowns, a halfway review
+   ================================================================ */
+const B=x=>Math.exp(-x*x);
+const PROPS2=[
+  {k:"height",name:"Height",unit:"cm",lo:4,hi:64,dec:0,col:"#f2b33d",what:"How tall the plant grows."},
+  {k:"green",name:"Leaf colour",unit:"SPAD",lo:15,hi:55,dec:0,col:"#7fd650",what:"Deep green leaves have more chlorophyll."},
+  {k:"yield",name:"Harvest",unit:"g",lo:5,hi:150,dec:0,col:"#5fd3e8",what:"Grams of fresh leaves you can pick."},
+  {k:"vitc",name:"Vitamin C",unit:"mg/100 g",lo:5,hi:60,dec:0,col:"#ff8a5b",what:"How nutritious the leaves are."},
+];
+const PK2=PROPS2.map(p=>p.k);
+const LEVELS=[{w:0,t:"Ignore"},{w:1,t:"A little"},{w:2,t:"Important"},{w:3,t:"Very important"}];
+/* four hidden biology formulas: each property likes different conditions, so they trade off */
+/* A new basil variety for Round 2. Each property mainly cares about two conditions, so they trade off:
+   tall plants stretch under weak light and warmth, but vitamin C and harvest need strong light. */
+function trueProps(c){
+  const [w,l,f,t]=c;
+  return {
+    height:.05+.95*B((l-.35)/.45)*B((t-.7)/.45)*B((w-.6)/.6)*B((f-.7)/.675),
+    green:.08+.92*B((f-.75)/.45)*B((t-.4)/.45)*B((l-.6)/.75)*B((w-.5)/.75),
+    yield:.05+.95*B((l-.85)/.45)*B((w-(.4+.4*l))/.25)*B((f-.65)/.675)*B((t-.55)/.675),
+    vitc:.05+.95*B((l-.95)/.45)*B((f-.3)/.45)*B((w-.35)/.675)*B((t-.45)/.675),
+  };
+}
+const fmtP=(k,v)=>{const p=PROPS2.find(x=>x.k===k);return Math.round(p.lo+(p.hi-p.lo)*v)+" "+p.unit};
+function scoreOf(vals,weights,only){
+  let s=0,ws=0;for(const k of PK2){const w=weights[k]||0;if(!w)continue;if(only&&vals[k]==null)continue;s+=w*vals[k];ws+=w}
+  return ws?100*s/ws:null;
+}
+const EXPERT={height:1,green:1,yield:1,vitc:1};   // the plant judge cares about everything equally…
+const expertScore=v=>100*Math.pow(v.height*v.green*v.yield*v.vitc,1/4);   // …and a plant is only healthy if nothing is badly weak
+const RSAMP=(()=>{const r=mulberry32(77);return [...Array(20000)].map(()=>trueProps([r(),r(),r(),r()]))})();
+function thresholdFor(weights){const xs=RSAMP.map(v=>scoreOf(v,weights)).sort((a,b)=>b-a);return xs[Math.floor(xs.length*.01)]}
+const EXPERT_MAX=(()=>{const r=mulberry32(5);let best=null,bv=-1;for(let i=0;i<40000;i++){const c=[r(),r(),r(),r()];const v=expertScore(trueProps(c));if(v>bv){bv=v;best=c}}
+  for(let k=0;k<6000;k++){const c=best.map(x=>clamp(x+.03*gauss(r),0,1));const v=expertScore(trueProps(c));if(v>bv){bv=v;best=c}}return bv})();
+function expertStars(v){const q=expertScore(v)/EXPERT_MAX;return q>=.9?5:q>=.78?4:q>=.62?3:q>=.4?2:1}
+
+/* ---------- shop ---------- */
+const SENS2=[
+  {id:"ruler",name:"Ruler",price:0,setup:0,m:{height:.02},what:"Measures height. Free."},
+  {id:"scale",name:"Kitchen scale",price:100,setup:0,m:{yield:.03},what:"Weighs the harvest."},
+  {id:"camera",name:"Colour camera",price:1500,setup:1,m:{green:.08},what:"Measures leaf colour. A bit noisy."},
+  {id:"lab",name:"Lab test for vitamin C",price:0,perPlant:40,wait:2,setup:0,m:{vitc:.02},what:"Very accurate. Costs $40 per plant, and the results take 2 days."},
+  {id:"hyper",name:"Hyperspectral camera",price:8000,setup:2,m:{green:.02,vitc:.05,yield:.04},what:"Measures leaf colour, vitamin C and harvest. Expensive."},
+];
+const SENS2M=Object.fromEntries(SENS2.map(s=>[s.id,s]));
+const TURNKEY={price:10000,beds:8,packPrice:3000,pack:4,maxPacks:0,sensors:["ruler","scale","camera"],planners:["evo"]};
+const MOD={basePrice:1000,bedPrice:500,maxBeds:24,breakChance:.14};
+
+function r2New(team){
+  newGame(team);
+  Object.assign(G,{round:2,weights:{height:1,green:1,yield:1,vitc:1},system:"modular",packs:0,sensors:{ruler:1},
+    setupDays:0,breakdowns:0,lost:0,labCost:0,reviewed:false,bonus:0});
+  G.beds=6;G.own={you:1,random:1};
+}
+function r2Spent(){
+  if(G.system==="turnkey")return TURNKEY.price+G.packs*TURNKEY.packPrice;
+  let s=MOD.basePrice+(G.beds-1)*MOD.bedPrice;
+  for(const id in G.sensors)if(G.sensors[id])s+=SENS2M[id].price;
+  for(const p of PLANNERS)if(p.price&&G.own[p.id])s+=p.price;
+  return s;
+}
+function r2SetupDays(){
+  if(G.system==="turnkey")return 0;
+  let d=1;for(const id in G.sensors)if(G.sensors[id])d+=SENS2M[id].setup;
+  for(const p of PLANNERS)if(p.price&&G.own[p.id])d+=1;
+  return d;
+}
+function r2Measured(){const m={};for(const id in G.sensors)if(G.sensors[id])for(const k in SENS2M[id].m){const sg=SENS2M[id].m[k];if(m[k]==null||sg<m[k].sg)m[k]={sg,by:id}}return m}
+const r2WaitDays=()=>G.sensors.lab&&G.weights.vitc?SENS2M.lab.wait:0;
+
+/* ---------- planner context: the planners chase YOUR measured health score ---------- */
+function r2Context(){
+  const W=G.weights;
+  const shift=(c,a)=>c.map((x,i)=>clamp(x+a[i],0,1));
+  return {ymax:100,gold:G.thr,
+    detailed:c=>.95*scoreOf(trueProps(shift(c,[.05,-.05,.06,-.04])),W)/100,
+    rough:c=>.8*scoreOf(trueProps(shift(c,[.14,-.16,.15,-.1])),W)/100};
+}
+
+/* ---------- a batch ---------- */
+function r2PrepareBatch(){
+  G.cur.wait=r2WaitDays();G.cur.waitWhy="Waiting for lab results";
+  G.cur.noise=1;G.cur.dead=-1;G.cur.event=null;
+  if(G.system==="modular"&&rng()<MOD.breakChance){
+    const opts=["pump","crash"];if(G.sensors.camera)opts.push("camera");
+    const ev=opts[Math.floor(rng()*opts.length)];G.cur.event=ev;G.breakdowns++;
+    if(ev==="pump"){G.cur.dead=Math.floor(rng()*G.beds);G.lost++}
+    if(ev==="crash"){G.cur.wait+=1;G.cur.waitWhy=G.cur.wait>1?"Repairing the controller, then waiting for lab results":"Repairing the controller"}
+    if(ev==="camera")G.cur.noise=3;
+  }
+  if(G.sensors.lab&&G.weights.vitc){const cost=SENS2M.lab.perPlant*G.beds;if(G.money>=cost){G.money-=cost;G.labCost+=cost;G.cur.lab=true}else{G.cur.lab=false;G.cur.wait=Math.max(0,G.cur.wait-SENS2M.lab.wait);toast("Not enough money for lab tests this batch. Vitamin C is not measured.","bad")}}
+}
+function r2Grow(){
+  const meas=r2Measured();
+  G.cur.conds.forEach((c,i)=>{
+    const tv=trueProps(c);const real={};for(const k of PK2)real[k]=clamp(tv[k]*(1+.04*gauss()),0,1.1);
+    const seen={};
+    for(const k of PK2){const m=meas[k];if(!m)continue;if(m.by==="lab"&&!G.cur.lab)continue;
+      const sg=m.sg*(k==="green"&&m.by==="camera"?G.cur.noise:1);seen[k]=clamp(real[k]+sg*gauss(),0,1.15)}
+    const dead=i===G.cur.dead;
+    const ms=dead?null:scoreOf(seen,G.weights,true);
+    const ts=scoreOf(real,G.weights);
+    G.plants[i]={c,h:4+real.height*(HMAX-4),props:real,seen,y:ms,ts,frac:.04,dead,gold:!dead&&ms!=null&&ms>=G.thr,
+      label:dead?"dead":G.cur.wait>0&&G.cur.lab?"lab…":ms==null?"?":String(Math.round(ms)),extra:{seen,real,ts}};
+  });
+  if(G.cur.event==="pump")toast(`A pump in bed ${G.cur.dead+1} clogged. That plant will die.`,"bad");
+  if(G.cur.event==="camera")toast("The colour camera lost its calibration. Colour readings are very noisy this batch.","bad");
+  if(G.cur.event==="crash")toast("The controller crashed. Repairs take 1 extra day.","bad");
+}
+function r2Finalise(){for(let i=0;i<G.beds;i++){const p=G.plants[i];if(p&&!p.dead)p.label=p.y==null?"?":String(Math.round(p.y))}refreshAll()}
+function r2Review(){
+  if(G.reviewed||G.day<21)return false;
+  G.reviewed=true;
+  const gold=G.data.filter(d=>d.y!=null&&d.y>=G.thr).length;
+  if(!gold){
+    openOverlay(`<span class="label">Day ${G.day}: halfway review</span><h2>No extra money yet</h2>
+      <p>Your funder checked in. You have no exceptional plant yet, so there is no extra money.</p>
+      <p class="small">Tip: check that your sensors measure what your health score needs.</p>
+      <div class="row"><button class="btn primary big" id="b-ok">Keep going</button></div>`);
+    $("#b-ok").onclick=()=>{closeOverlay();if(!canRun())finishSeason()};
+    return true;
+  }
+  G.money+=2000;G.bonus=2000;
+  r2OpenUpgrade();
+  return true;
+}
+function r2OpenUpgrade(){
+  const items=[];
+  if(G.system==="turnkey"){if(G.packs<TURNKEY.maxPacks)items.push({id:"pack",name:`${TURNKEY.pack} more GrowBox beds`,price:TURNKEY.packPrice,days:0})}
+  else{
+    items.push({id:"bed",name:"1 more bed",price:MOD.bedPrice,days:0});
+    for(const s of SENS2)if(!G.sensors[s.id]&&s.price)items.push({id:"s:"+s.id,name:s.name,price:s.price,days:s.setup});
+    for(const p of PLANNERS)if(p.price&&!G.own[p.id])items.push({id:"p:"+p.id,name:p.name,price:p.price,days:1});
+  }
+  const render=()=>{
+    openOverlay(`<span class="label">Day ${G.day}: halfway review</span><h2>Your funder is happy: +$2,000!</h2>
+      <p>You found an exceptional plant. You may spend ${eur(G.money)} now, or keep it.</p>
+      ${G.system==="turnkey"?`<p class="small">Your GrowBox is a closed system. There is nothing you can add to it. The money stays in the bank.</p>`:`<p class="small">New parts need setup days before your next batch.</p>`}
+      <div class="buylist">${items.map(it=>`<button class="choice" data-up="${it.id}" ${G.money<it.price||(it.id==="bed"&&G.beds>=MOD.maxBeds)?"disabled":""}><h3>${it.name}<span class="price">${eur(it.price)}</span></h3>${it.days?`<span class="note">${it.days} setup day${it.days>1?"s":""}</span>`:""}</button>`).join("")||`<p class="small">Nothing more to buy.</p>`}</div>
+      <div class="row"><button class="btn primary big" id="b-ok">Continue</button></div>`);
+    document.querySelectorAll("[data-up]").forEach(b=>b.onclick=()=>{const it=items.find(x=>x.id===b.dataset.up);if(!it||G.money<it.price||(it.id==="bed"&&G.beds>=MOD.maxBeds))return;
+      G.money-=it.price;G.spent+=it.price;
+      if(it.id==="pack"){G.packs++;G.beds+=TURNKEY.pack}
+      else if(it.id==="bed"){G.beds++}
+      else if(it.id.startsWith("s:"))G.sensors[it.id.slice(2)]=1;
+      else if(it.id.startsWith("p:"))G.own[it.id.slice(2)]=1;
+      G.pendingSetup=(G.pendingSetup||0)+it.days;
+      if(it.id!=="bed")items.splice(items.indexOf(it),1);
+      for(let i=0;i<G.beds;i++)if(!G.plan[i])G.plan[i]=randCond();
+      syncEquipment();frameView();render()});
+    $("#b-ok").onclick=()=>{closeOverlay();
+      if(G.pendingSetup){const d=Math.min(G.pendingSetup,daysLeft());G.setupDays+=d;G.pendingSetup=0;startPhase("setup",d);G.phaseStart=G.day;toast(`Setting up the new parts: ${d} day${d>1?"s":""}.`);ui();return}
+      if(G.planner!=="you")setPlanner(G.planner);if(!canRun())finishSeason()};
+  };
+  render();
+}
+
+/* ---------- Step 1: define healthy ---------- */
+function weightText(W){const tot=PK2.reduce((a,k)=>a+(W[k]||0),0);if(!tot)return "Nothing yet";return PROPS2.filter(p=>W[p.k]).map(p=>`${Math.round(W[p.k]/tot*100)}% ${p.name}`).join(" + ")}
+function openDefine(team,keepW){
+  r2New(team);if(keepW)G.weights=Object.assign({},keepW);PCTX=null;syncEquipment();frameView();ui();
+  const presets=[{t:"Only height",w:{height:3,green:0,yield:0,vitc:0}},{t:"Balanced",w:{height:1,green:1,yield:1,vitc:1}},{t:"Nutritious",w:{height:0,green:1,yield:1,vitc:3}},{t:"Big harvest",w:{height:1,green:1,yield:3,vitc:0}}];
+  const render=()=>{
+    const W=G.weights;const any=PK2.some(k=>W[k]);
+    const T=any?thresholdFor(W):0;
+    openOverlay(`<div class="row" style="justify-content:space-between"><div class="eyebrow"><span class="label" style="color:var(--leaf)">Round 2 · Step 1 of 3: Define</span><span class="label">Step 2: Build</span><span class="label">Step 3: Run</span></div>${sayBtn("b-sayD")}</div>
+     <h2>What is a healthy plant?</h2>
+     <div class="goalbox"><ul class="goal"><li>In Round 1, healthy meant <b>tall</b>. Was that right?</li><li>Now <b>you</b> decide. Choose how much each property matters.</li><li>Together they make your <b>health score</b> from 0 to 100.</li></ul></div>
+     <div class="row"><span class="label">Quick start:</span>${presets.map((p,i)=>`<button class="btn small" data-pre="${i}">${p.t}</button>`).join("")}</div>
+     <div class="props">${PROPS2.map(p=>`<div class="prop"><div><h3 style="color:${p.col}">${p.name}</h3><span class="small">${p.what}</span></div>
+       <div class="lv" role="group" aria-label="How important is ${p.name}?">${LEVELS.map(l=>`<button class="seg ${W[p.k]===l.w?"on":""}" data-k="${p.k}" data-w="${l.w}">${l.t}</button>`).join("")}</div></div>`).join("")}</div>
+     <div class="total">Health score = ${weightText(W)}</div>
+     ${any?`<p>A plant with a health score of <b style="color:var(--gold)">${Math.round(T)} or more</b> is <b style="color:var(--gold)">exceptional</b>. About 1 in 100 random conditions get there.</p>`:`<p class="warn">Choose at least one property.</p>`}
+     <div class="row"><button class="btn primary big" id="b-next" ${any?"":"disabled"}>Next: build your lab ▶</button><button class="btn" id="b-back">Back</button></div>`);
+    document.querySelectorAll("[data-pre]").forEach(b=>b.onclick=()=>{G.weights=Object.assign({},presets[+b.dataset.pre].w);render()});
+    document.querySelectorAll("[data-k]").forEach(b=>b.onclick=()=>{G.weights[b.dataset.k]=+b.dataset.w;render()});
+    if($("#b-sayD"))$("#b-sayD").onclick=()=>speak(`What is a healthy plant? In round 1, healthy meant tall. Now you decide. There are four properties: height, leaf colour, harvest, and vitamin C. For each one, choose how important it is. Together they make your health score, from 0 to 100. Right now your health score is ${weightText(W).replace(/%/g," percent")}.`);
+    $("#b-back").onclick=openTitle;
+    $("#b-next").onclick=()=>{G.thr=T;G.thrR=Math.round(T);openBuild2()};
+  };
+  render();
+}
+
+/* ---------- Step 2: build ---------- */
+function openBuild2(){
+  const presets=[
+    {t:"Plug and play",what:"GrowBox Pro: 8 beds, ready on day 1",f:()=>{G.system="turnkey";G.packs=0;G.beds=TURNKEY.beds;G.own={you:1,random:1,evo:1};G.sensors=Object.fromEntries(TURNKEY.sensors.map(s=>[s,1]))}},
+    {t:"Cheap and DIY",what:"Modular: 12 beds, simple sensors",f:()=>{G.system="modular";G.beds=12;G.own={you:1,random:1,evo:1};G.sensors={ruler:1,scale:1,lab:1}}},
+    {t:"Smart software",what:"Modular: 6 beds, Bayesian optimisation, good sensors",f:()=>{G.system="modular";G.beds=6;G.own={you:1,random:1,bo:1};G.sensors={ruler:1,scale:1,camera:1,lab:1}}},
+  ];
+  const render=()=>{
+    if(G.system==="turnkey"){G.packs=0;G.beds=TURNKEY.beds;G.sensors=Object.fromEntries(TURNKEY.sensors.map(s=>[s,1]));G.own={you:1,random:1,evo:1}}
+    const spent=r2Spent();G.money=START_MONEY-spent;G.spent=spent;
+    const meas=r2Measured();const setup=r2SetupDays();
+    const keep=overlay.hidden?0:overlay.scrollTop;
+    const blind=PROPS2.filter(p=>G.weights[p.k]&&!meas[p.k]);
+    const mod=G.system==="modular";
+    const sensorRows=SENS2.map(s=>{const on=!!G.sensors[s.id];const can=on||G.money>=s.price||!mod;
+      return `<button class="choice ${on?"on":""}" data-sen="${s.id}" ${(!mod||(!can))?"disabled":""}><h3>${s.name}<span class="price">${s.perPlant?`${eur(s.perPlant)}/plant`:s.price?eur(s.price):"free"}</span></h3><span class="what">${s.what}</span><span class="note">Measures: ${Object.keys(s.m).map(k=>PROPS2.find(p=>p.k===k).name).join(", ")}${s.setup?` · ${s.setup} setup day${s.setup>1?"s":""}`:""}</span></button>`}).join("");
+    const plannerRows=PLANNERS.filter(p=>p.price).map(p=>{const on=!!G.own[p.id];const can=on||G.money>=p.price;
+      return `<button class="choice ${on?"on":""}" data-pl2="${p.id}" ${(!mod||!can)?"disabled":""}><h3>${p.name}<span class="price">${!mod&&p.id==="evo"?"built in":eur(p.price)}</span></h3><span class="what">${p.what}</span><span class="note">${p.days?`Thinks ${p.days} day${p.days>1?"s":""} before each batch`:"No waiting"}${mod?" · 1 setup day":""}</span></button>`}).join("");
+    openOverlay(`<div class="row" style="justify-content:space-between"><div class="eyebrow"><span class="label">Step 1: Define</span><span class="label" style="color:var(--leaf)">Step 2 of 3: Build</span><span class="label">Step 3: Run</span></div>${sayBtn("b-sayB")}</div>
+     <h2>You won ${eur(START_MONEY)} to build your lab</h2>
+     <p>Health score = <b>${weightText(G.weights)}</b>. Exceptional = <b style="color:var(--gold)">${G.thrR} or more</b>.</p>
+     <div class="row"><span class="label">Quick start:</span>${presets.map((p,i)=>`<button class="btn small" data-bp="${i}" title="${p.what}">${p.t}</button>`).join("")}</div>
+     <h3>1. Ready-made or build it yourself?</h3>
+     <div class="cols">
+       <button class="choice ${G.system==="turnkey"?"on":""}" data-sys="turnkey"><h3>GrowBox Pro (ready-made)<span class="price">${eur(TURNKEY.price)}</span></h3>
+         <span class="what">${TURNKEY.beds} beds, a ruler, a scale and a colour camera. Planner "Tweak the best" built in.</span>
+         <span class="note">Works on day 1. Never breaks. But it is closed: you cannot add other sensors or planners.</span></button>
+       <button class="choice ${mod?"on":""}" data-sys="modular"><h3>Modular parts (build it yourself)<span class="price">from ${eur(MOD.basePrice)}</span></h3>
+         <span class="what">A controller and 1 bed for ${eur(MOD.basePrice)}. Each extra bed ${eur(MOD.bedPrice)}. Add any sensors and planners.</span>
+         <span class="note">Cheaper per bed and flexible. But setting up takes days, and parts sometimes break.</span></button>
+     </div>
+     ${G.system==="turnkey"?`<h3>2. Beds (N)</h3><div class="stepper"><span class="num bigbeds">${G.beds}</span><span>beds, fixed</span></div><p class="small">The GrowBox has ${TURNKEY.beds} beds. You cannot add more.</p>`:
+      `<h3>2. Beds (N)</h3><div class="stepper"><button class="btn" id="b-bm" ${G.beds<=1?"disabled":""} aria-label="One bed fewer">−</button><span class="num bigbeds">${G.beds}</span><span>bed${G.beds>1?"s":""}</span><button class="btn" id="b-bp" ${G.beds>=MOD.maxBeds||G.money<MOD.bedPrice?"disabled":""} aria-label="One bed more">+</button></div><p class="small">Each extra bed: ${eur(MOD.bedPrice)}</p>`}
+     <h3>3. Sensors: what can you see?</h3>
+     <div class="buylist">${sensorRows}</div>
+     <div class="checks">${PROPS2.filter(p=>G.weights[p.k]).map(p=>meas[p.k]?`<span class="ok">✓ ${p.name}: measured by ${SENS2M[meas[p.k].by].name}</span>`:`<span class="bad">✗ ${p.name}: not measured. Your planner cannot see it!</span>`).join("")}</div>
+     <h3>4. Planner (p)</h3>
+     <div class="buylist">${plannerRows}</div>
+     <div class="total">Money left: ${eur(G.money)} of ${eur(START_MONEY)} · Setup before you start: ${setup} day${setup===1?"":"s"} · ${G.beds} plants per batch</div>
+     ${blind.length?`<p class="warn">Warning: ${blind.map(p=>p.name).join(" and ")} ${blind.length>1?"are":"is"} part of your health score, but nothing measures ${blind.length>1?"them":"it"}.</p>`:""}
+     <div class="row"><label class="label" for="team">Team name</label><input id="team" type="text" maxlength="24" placeholder="e.g. Basil Instinct" value="${esc(G.team)}"></div>
+     <div class="row"><button class="btn primary big" id="b-go2" ${G.money<0?"disabled":""}>Build it and start step 3 ▶</button><button class="btn" id="b-back2">Back to step 1</button></div>`);
+    overlay.scrollTop=keep;
+    const keepTeam=()=>{const t=$("#team");if(t)G.team=t.value};
+    document.querySelectorAll("[data-bp]").forEach(b=>b.onclick=()=>{keepTeam();presets[+b.dataset.bp].f();syncEquipment();frameView();render()});
+    document.querySelectorAll("[data-sys]").forEach(b=>b.onclick=()=>{keepTeam();const s=b.dataset.sys;if(s===G.system)return;G.system=s;
+      if(s==="modular"){G.beds=6;G.sensors={ruler:1};G.own={you:1,random:1}}else{G.packs=0}syncEquipment();frameView();render()});
+    if($("#b-pm"))$("#b-pm").onclick=()=>{keepTeam();G.packs=Math.max(0,G.packs-1);syncEquipment();frameView();render()};
+    if($("#b-pp"))$("#b-pp").onclick=()=>{keepTeam();G.packs++;syncEquipment();frameView();render()};
+    if($("#b-bm"))$("#b-bm").onclick=()=>{keepTeam();G.beds=Math.max(1,G.beds-1);syncEquipment();frameView();render()};
+    if($("#b-bp"))$("#b-bp").onclick=()=>{keepTeam();G.beds++;syncEquipment();frameView();render()};
+    document.querySelectorAll("[data-sen]").forEach(b=>b.onclick=()=>{keepTeam();const id=b.dataset.sen;if(id==="ruler")return;G.sensors[id]=G.sensors[id]?0:1;syncEquipment();render()});
+    document.querySelectorAll("[data-pl2]").forEach(b=>b.onclick=()=>{keepTeam();const id=b.dataset.pl2;if(G.own[id])delete G.own[id];else G.own[id]=1;syncEquipment();render()});
+    if($("#b-sayB"))$("#b-sayB").onclick=()=>speak(`Build your lab. You have ${START_MONEY} dollars. First choose: a ready-made GrowBox, which works on day one but is closed, or modular parts, which are cheaper and flexible, but take days to set up and sometimes break. Then choose beds, sensors and a planner. Sensors decide what you can measure. If your health score needs something that no sensor measures, your planner cannot see it. You have ${G.money} dollars left, and setup takes ${setup} days.`);
+    $("#b-back2").onclick=()=>{keepTeam();openDefine(G.team,G.weights)};
+    $("#b-go2").onclick=()=>{keepTeam();if(G.money<0)return;const t=(G.team||"").trim()||"Team "+(100+Math.floor(rng()*900));localSet("sdl-team",t);G.team=t;r2Start()};
+  };
+  render();
+}
+function r2Start(){
+  PCTX=r2Context();
+  closeOverlay();syncEquipment();frameView();
+  const smart=["twin","rough","bo","evo"].find(id=>G.own[id]);
+  if(smart){G.planner=smart}else{G.planner="you";G.planFrom="you"}
+  G.setupDays=r2SetupDays();
+  if(G.setupDays>0){G.phase="setup";startPhase("setup",G.setupDays);toast(`Setting up your modular lab: ${G.setupDays} day${G.setupDays>1?"s":""}.`)}
+  else{G.phase="plan";toast("Your GrowBox works out of the box. Day 1 starts now.")}
+  if(smart){const cs=plan(smart,G.data,G.beds);for(let i=0;i<G.beds;i++)G.plan[i]=cs[i];G.planFrom=smart}
+  ui();
+}
+
+/* ---------- Step 3 panels ---------- */
+function r2RenderTop(){
+  const gold=G.data.filter(d=>d.y!=null&&d.y>=G.thr).length;
+  $("#top").innerHTML=`
+   <div class="panel cell"><span class="label">Round 2 · Step 3: Run</span><span class="big">Day <span id="dayval">${G.day}</span><span style="font-size:14px;color:var(--muted)"> / ${SEASON_DAYS}</span></span><div id="daybar"><i></i></div></div>
+   <div class="panel cell"><span class="label">${esc(G.team)}'s lab</span><span class="big" style="font-size:16px"><span style="color:var(--amber)">${G.system==="turnkey"?"GrowBox":"Modular"} · ${G.beds} beds</span></span></div>
+   <div class="panel cell"><span class="label">Health score</span><span class="big" style="font-size:14px;max-width:260px;white-space:normal">${weightText(G.weights)}</span></div>
+   <div class="panel cell"><span class="label">Exceptional (${G.thrR}+)</span><span class="big" style="color:var(--gold)">${gold}</span></div>
+   <div id="ctrls" class="panel">${sayBtn("b-say2")}<button class="btn small" id="b-fast">${G.fast?"Speed: fast":"Speed: normal"}</button><button class="btn small" id="b-finish">Finish</button></div>`;
+  $("#b-fast").onclick=()=>{G.fast=!G.fast;ui()};
+  if($("#b-say2"))$("#b-say2").onclick=()=>{const b=best();speak(`Day ${G.day} of ${SEASON_DAYS}. You have ${gold} exceptional plants. ${b?`Your best health score is ${Math.round(b.y)}. `:""}Set the conditions on the left, or choose a planner. Then press Plant and grow.`)};
+  $("#b-finish").onclick=()=>{if(G.phase==="plan")finishSeason()};
+  updateClock();
+  document.documentElement.style.setProperty("--toph",$("#top").offsetHeight+"px");
+}
+function propBars(real,seen){
+  return `<div class="pbars">${PROPS2.map(p=>{const s=seen?seen[p.k]:null;const used=G.weights[p.k]>0;
+    return `<div class="pbar ${used?"":"dim"}"><span>${p.name}${used?"":" (ignored)"}</span><div class="track"><i style="width:${Math.round((s!=null?s:0)*100)}%;background:${p.col}"></i></div><b>${s!=null?fmtP(p.k,s):"not measured"}</b></div>`}).join("")}</div>`;
+}
+function r2RenderRight(){
+  const b=best();const sel=Math.min(G.selected??0,G.beds-1);const p=G.plants[sel];
+  $("#right").innerHTML=`
+   <section class="panel card"><h3>Health score of every plant</h3>
+     <canvas class="chart" id="dots" style="height:280px" role="img" aria-label="Health score of every plant, batch by batch"></canvas>
+     ${b?`<p class="small">Best so far: <b style="color:var(--ink)">${Math.round(b.y)}</b></p>`:""}</section>
+   <section class="panel card"><h3>Bed ${sel+1}${p&&p.frac>=1&&!p.dead?`: score ${p.y==null?"?":Math.round(p.y)}`:""}</h3>
+     ${p&&p.frac>=1?(p.dead?`<p class="small">This plant died (pump clogged).</p>`:propBars(p.props,p.seen)+`<p class="small">What your sensors measured. Click another bed to compare.</p>`):`<p class="small">Grow a batch, then click a bed to see what was measured.</p>`}</section>`;
+  drawDots($("#dots"));
+}
+
+/* ---------- end ---------- */
+function r2Finish(){
+  G.phase="done";ui();
+  const plants=G.data.length;
+  const golds=G.data.filter(d=>d.y!=null&&d.y>=G.thr);
+  const real=golds.filter(d=>d.ts>=G.thr).length;
+  const bestD=best();
+  const stars=bestD?expertStars(bestD.real):0;
+  const onlyOne=PK2.filter(k=>G.weights[k]).length===1;
+  const blind=PROPS2.filter(p=>G.weights[p.k]&&!r2Measured()[p.k]);
+  const code=encodeResult2();G.code=code;
+  const lessons=[];
+  if(blind.length)lessons.push(`Nothing measured ${blind.map(p=>p.name.toLowerCase()).join(" or ")}, so your planner never saw ${blind.length>1?"them":"it"}. You can only optimise what you measure.`);
+  if(golds.length>real)lessons.push(`${golds.length-real} of your "exceptional" plants were not really exceptional. Noisy or missing measurements fooled you.`);
+  if(onlyOne&&stars<=2)lessons.push(`You optimised only one property. The plant expert, who cares about everything, gave your best plant ${stars} of 5 stars.`);
+  if(G.system==="modular"&&(G.setupDays||G.breakdowns))lessons.push(`Building it yourself cost ${G.setupDays} setup day${G.setupDays===1?"":"s"} and ${G.breakdowns} breakdown${G.breakdowns===1?"":"s"}.`);
+  if(G.system==="turnkey")lessons.push(`The GrowBox worked from day 1 and never broke, but you could not add new sensors or a smarter planner.`);
+  if(G.labCost)lessons.push(`Lab tests cost ${eur(G.labCost)} and ${SENS2M.lab.wait} extra days per batch.`);
+  openOverlay(`<div class="row" style="justify-content:space-between"><span class="label">Day ${G.day}: Round 2 over</span>${sayBtn("b-say3")}</div>
+   <h2>${esc(G.team)}: ${golds.length} exceptional plant${golds.length===1?"":"s"}</h2>
+   <div class="stats">
+     <div class="stat"><div class="v" style="color:var(--gold)">${golds.length}</div><div class="k">Exceptional by your measurements</div></div>
+     <div class="stat"><div class="v" style="color:var(--leaf)">${real}</div><div class="k">Really exceptional, checked with perfect measurements</div></div>
+     <div class="stat"><div class="v">${plants}</div><div class="k">Plants grown</div></div>
+     <div class="stat"><div class="v">${G.setupDays}</div><div class="k">Days lost to setup</div></div>
+     <div class="stat"><div class="v">${G.breakdowns}</div><div class="k">Breakdowns</div></div>
+     <div class="stat"><div class="v">${eur(G.spent+G.labCost)}</div><div class="k">Money spent</div></div>
+   </div>
+   <h3>The plant expert tastes your best plant</h3>
+   ${bestD?`<p class="small">The expert cares about all four properties equally. These are the true values.</p>${propBars(bestD.real,bestD.real).replace(/ \(ignored\)/g,"")}
+     <p><span class="stars" aria-label="${stars} of 5 stars">${"★".repeat(stars)}${"☆".repeat(5-stars)}</span> ${stars>=4?"A truly healthy plant.":stars>=3?"A good plant overall.":"Good on your score, but not very healthy overall."}</p>`:`<p class="small">No plant was measured.</p>`}
+   <h3>What happened</h3><ul class="lessons">${lessons.map(l=>`<li>${l}</li>`).join("")||"<li>A smooth season.</li>"}</ul>
+   <h3>Talk about it</h3><ul class="lessons"><li>Was your health score a good definition of a healthy plant?</li><li>Ready-made or modular: what would you choose for a real lab, and why?</li><li>Which sensor was worth its price?</li></ul>
+   <h3>Class leaderboard</h3>
+   <div class="row"><span class="code" id="code">${code}</span><button class="btn small" id="b-copy">Copy</button></div>
+   <p class="small" id="post-status">Posting your result…</p>
+   <div class="row"><button class="btn primary" id="b-again">Play Round 2 again</button><button class="btn" id="b-board">Open leaderboard</button><button class="btn" id="b-home">Start screen</button></div>`);
+  if($("#b-say3"))$("#b-say3").onclick=()=>speak(`Round 2 over. ${golds.length} plants were exceptional by your measurements. ${real} were really exceptional. The plant expert gave your best plant ${stars} out of 5 stars. ${lessons.join(" ")}`);
+  $("#b-again").onclick=()=>openDefine(G.team);
+  $("#b-board").onclick=()=>openBoard("end");
+  $("#b-home").onclick=openTitle;
+  $("#b-copy").onclick=()=>{try{navigator.clipboard.writeText(code).then(()=>toast("Code copied."),()=>{})}catch(e){}};
+  submitResult2(code,{gold:golds.length,real,stars});
+}
+
+/* ================================================================
+   Class leaderboard
+   db (direct post) · room (live to the teacher's screen) · result code (always works)
+   ================================================================ */
+const B32="0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+function encodeResult(){
+  const s=seasonNumbers();const b=best();
+  const mask=(G.own.evo?1:0)|(G.own.bo?2:0)|(G.own.twin?4:0)|(G.own.rough?8:0);
+  const fields=[[Math.min(255,s.gold),8],[G.firstGold==null?63:Math.min(62,G.firstGold),6],[Math.min(255,s.plants),8],[Math.min(63,Math.round(G.spent/1000)),6],[G.beds,5],[mask,4],[b?Math.min(127,Math.round(b.y)):0,7]];
+  let big=0n;for(const [v,n] of fields)big=(big<<BigInt(n))|BigInt(v);
+  let s2="";for(let i=0;i<9;i++){s2=B32[Number(big&31n)]+s2;big>>=5n}
+  let cs=0;for(const ch of s2)cs=(cs*7+B32.indexOf(ch))%32;s2+=B32[cs];
+  return s2.slice(0,5)+"-"+s2.slice(5);
+}
+function decodeResult(code){
+  const s=String(code).toUpperCase().replace(/[^0-9A-Z]/g,"").replace(/O/g,"0").replace(/[IL]/g,"1");
+  if(s.length!==10)return null;
+  let cs=0;for(const ch of s.slice(0,9)){const v=B32.indexOf(ch);if(v<0)return null;cs=(cs*7+v)%32}
+  if(B32[cs]!==s[9])return null;
+  let big=0n;for(const ch of s.slice(0,9))big=(big<<5n)|BigInt(B32.indexOf(ch));
+  const sizes=[8,6,8,6,5,4,7];const v=[];
+  for(let i=sizes.length-1;i>=0;i--){v[i]=Number(big&((1n<<BigInt(sizes[i]))-1n));big>>=BigInt(sizes[i])}
+  return {gold:v[0],first:v[1]===63?null:v[1],plants:v[2],spent:v[3]*1000,beds:v[4],planners:["evo","bo","twin","rough"].filter((_,i)=>v[5]&(1<<i)),best:v[6]};
+}
+/* Round 2 codes are 13 characters: they carry the health-score definition, the system and the sensors */
+const R2_SENS=["ruler","scale","camera","lab","hyper"],R2_PL=["evo","bo","rough","twin"];
+function encodeResult2(){
+  const golds=G.data.filter(d=>d.y!=null&&d.y>=G.thr);const real=golds.filter(d=>d.ts>=G.thr).length;
+  const b=best();const stars=b?expertStars(b.real):0;
+  const wbits=PK2.reduce((a,k,i)=>a|((G.weights[k]||0)<<(2*i)),0);
+  const smask=R2_SENS.reduce((a,id,i)=>a|(G.sensors[id]?1<<i:0),0);
+  const pmask=R2_PL.reduce((a,id,i)=>a|(G.own[id]?1<<i:0),0);
+  const fields=[[Math.min(255,golds.length),8],[Math.min(255,real),8],[Math.min(255,G.data.length),8],[Math.min(63,Math.round((G.spent+G.labCost)/1000)),6],[Math.min(31,G.beds),5],[G.system==="turnkey"?1:0,1],[wbits,8],[smask,5],[pmask,4],[stars,3]];
+  let big=0n;for(const [v,n] of fields)big=(big<<BigInt(n))|BigInt(v);
+  let s2="";for(let i=0;i<12;i++){s2=B32[Number(big&31n)]+s2;big>>=5n}
+  let cs=0;for(const ch of s2)cs=(cs*7+B32.indexOf(ch))%32;s2+=B32[cs];
+  return s2.slice(0,4)+"-"+s2.slice(4,8)+"-"+s2.slice(8);
+}
+function decodeResult2(code){
+  const s=String(code).toUpperCase().replace(/[^0-9A-Z]/g,"").replace(/O/g,"0").replace(/[IL]/g,"1");
+  if(s.length!==13)return null;
+  let cs=0;for(const ch of s.slice(0,12)){const v=B32.indexOf(ch);if(v<0)return null;cs=(cs*7+v)%32}
+  if(B32[cs]!==s[12])return null;
+  let big=0n;for(const ch of s.slice(0,12))big=(big<<5n)|BigInt(B32.indexOf(ch));
+  const sizes=[8,8,8,6,5,1,8,5,4,3];const v=[];
+  for(let i=sizes.length-1;i>=0;i--){v[i]=Number(big&((1n<<BigInt(sizes[i]))-1n));big>>=BigInt(sizes[i])}
+  const weights={};PK2.forEach((k,i)=>weights[k]=(v[6]>>(2*i))&3);
+  return {round:2,gold:v[0],real:v[1],plants:v[2],spent:v[3]*1000,beds:v[4],system:v[5]?"turnkey":"modular",weights,
+    sensors:R2_SENS.filter((_,i)=>v[7]&(1<<i)),planners:R2_PL.filter((_,i)=>v[8]&(1<<i)),stars:v[9]};
+}
+const decodeAny=code=>decodeResult(code)||decodeResult2(code);
+let boardRound=1;
+let DB=null,ROOM=null,USER=null,canWrite=null,dbRuns=[],boardFrom=null;
+(async()=>{
+  try{
+    if(!window.claude||!window.claude.use)return;
+    const [db,room,user]=await Promise.all([claude.use("db").catch(()=>null),claude.use("room").catch(()=>null),claude.use("user").catch(()=>null)]);
+    DB=db;ROOM=room;USER=user;
+    if(USER){try{canWrite=await USER.can("data.write")}catch(e){canWrite=null}}
+    if(ROOM){try{ROOM.onPeers(()=>{if(boardFrom)renderBoard();mirrorPeers()},()=>{})}catch(e){ROOM=null}}
+    if(DB){try{DB.collection("runs3").onSnapshot(s=>{dbRuns=s.docs.map(d=>Object.assign({_id:d.id},d.data()));if(boardFrom)renderBoard()},()=>{DB=null})}catch(e){DB=null}}
+  }catch(e){}
+})();
+/* ---------- live class board for self-hosting (e.g. GitHub Pages) ----------
+   Results are sent as short text messages to a free public relay (ntfy.sh) under a class name.
+   Set window.SDL_CLASS in index.html, or add ?class=yourname to the link. Not used on claude.ai. */
+const LIVE=(()=>{
+  if(window.claude&&window.claude.use)return null;
+  let c="";try{c=new URLSearchParams(location.search).get("class")||""}catch(e){}
+  c=(c||window.SDL_CLASS||"").toLowerCase().replace(/[^a-z0-9_-]/g,"").slice(0,40);
+  if(!c||!/^https?:$/.test(location.protocol))return null;
+  return {name:c,topic:"sdl-greenhouse-"+c,url:"https://ntfy.sh/sdl-greenhouse-"+c};
+})();
+let liveRuns=new Map(),liveState=LIVE?"off":"none",liveES=null;
+function liveConnect(){
+  if(!LIVE||liveES)return;liveState="connecting";
+  try{
+    liveES=new EventSource(LIVE.url+"/sse?since=all");
+    liveES.onopen=()=>{const was=liveState;liveState="live";if(was==="live")return;if(boardFrom)renderBoard()};
+    liveES.onmessage=ev=>{try{const m=JSON.parse(ev.data);if(m.event&&m.event!=="message")return;
+      const r=JSON.parse(m.message);const id=String(r.id||"").replace(/[^A-Za-z0-9_-]/g,"").slice(0,60);if(!id)return;
+      const e=entryFromCode(String(r.code||""),String(r.team||"Team"),id);if(!e)return;e.at=(m.time||0)*1000;
+      liveState="live";liveRuns.set(id,e);if(boardFrom)renderBoard()}catch(err){}};
+    liveES.onerror=()=>{if(liveES&&liveES.readyState===2){liveState="error";liveES=null;if(boardFrom)renderBoard()}};   // the browser retries by itself
+    setTimeout(()=>{if(liveState==="connecting"){liveState="error";if(boardFrom)renderBoard()}},8000);
+  }catch(e){liveState="error";liveES=null}
+}
+async function livePost(code,team,id){
+  if(!LIVE)return false;
+  try{const r=await fetch(LIVE.url,{method:"POST",body:JSON.stringify({id,team:String(team||"Team").slice(0,24),code})});return r.ok}catch(e){return false}
+}
+function clearedAt(){try{return +localStorage.getItem("sdl-cleared-at")||0}catch(e){return 0}}
+function localRuns(){try{return JSON.parse(localStorage.getItem("sdl-runs3")||"[]")}catch(e){return[]}}
+function saveLocal(e){try{const a=localRuns().filter(x=>x._id!==e._id);a.push(e);localStorage.setItem("sdl-runs3",JSON.stringify(a.slice(-300)))}catch(err){}}
+function entryFromCode(code,team,id){const d=decodeAny(code);if(!d)return null;return Object.assign(d,{_id:id,team:String(team||"Team").slice(0,24),code,at:Date.now()})}
+async function submitResult2(code){return submitResult(code)}
+async function submitResult(code){
+  const id=G.runId.replace(/[^A-Za-z0-9_-]/g,"");const e=entryFromCode(code,G.team,id);saveLocal(e);
+  if(ROOM){try{await ROOM.presence({team:G.team,result:{code,id}})}catch(err){}}
+  let posted=false;if(DB&&canWrite!==false){try{await DB.collection("runs3").doc(id).set(e);posted=true}catch(err){}}
+  if(LIVE)posted=await livePost(code,G.team,id);
+  const st=$("#post-status");if(st)st.textContent=posted?"Posted to the class leaderboard.":"Give this code to your teacher. It holds your results.";
+}
+async function mirrorPeers(){
+  if(!DB||!ROOM||!boardFrom)return;let edit=false;try{edit=USER?await USER.canEdit():false}catch(e){}if(!edit)return;
+  for(const p of ROOM.peers()){const r=p.presence&&p.presence.result;if(!r||!r.id||dbRuns.some(x=>x._id===r.id))continue;
+    const e=entryFromCode(r.code,p.presence.team,String(r.id).replace(/[^A-Za-z0-9_-]/g,"").slice(0,60));if(!e)continue;try{await DB.collection("runs3").doc(e._id).set(e)}catch(err){}}
+}
+function allEntries(){
+  const map=new Map();for(const e of localRuns())map.set(e._id,e);for(const e of dbRuns)map.set(e._id,e);for(const [k,e] of liveRuns)map.set(k,e);
+  if(ROOM){try{for(const p of ROOM.peers()){const r=p.presence&&p.presence.result;if(r&&r.id&&!map.has(r.id)){const e=entryFromCode(r.code,p.presence.team,r.id);if(e)map.set(r.id,e)}}}catch(e){}}
+  const cut=clearedAt();const all=[...map.values()].filter(e=>!cut||(e.at||0)>cut);
+  if(boardRound===2)return all.filter(e=>e.round===2).sort((a,b)=>b.real-a.real||b.stars-a.stars||b.gold-a.gold);
+  return all.filter(e=>(e.round||1)===1&&e.spent<=START_MONEY).sort((a,b)=>b.gold-a.gold||((a.first??99)-(b.first??99)));
+}
+function openBoard(from){boardFrom=from;liveConnect();if(G&&G.round===2)boardRound=2;else if(G)boardRound=1;renderBoard()}
+const wShort=W=>{const tot=PK2.reduce((a,k)=>a+(W[k]||0),0);return PROPS2.filter(p=>W[p.k]).map(p=>`${p.name} ${Math.round(W[p.k]/tot*100)}%`).join(", ")};
+function renderBoard(){
+  const rows=allEntries();
+  openOverlay(`<div class="row" style="justify-content:space-between"><h2>Class leaderboard</h2><button class="btn" id="b-bclose">Back</button></div>
+   <p class="small">${DB?"Results are saved on this page for everyone who can open it.":LIVE?`Live class board “${esc(LIVE.name)}”: ${liveState==="live"?"connected. Results from everyone playing with this link appear here.":liveState==="error"?"not reachable right now. Type in the result codes below instead.":"connecting…"}`:"Results are saved in this browser. Use one computer as the class screen."} Ranked by exceptional plants, then by the day of the first one.</p>
+   <div class="row"><button class="btn small ${boardRound===1?"primary":""}" data-br="1">Round 1</button><button class="btn small ${boardRound===2?"primary":""}" data-br="2">Round 2</button></div>
+   ${boardRound===1?`<div class="tw"><table class="t"><thead><tr><th>#</th><th>Team</th><th style="text-align:right">Exceptional</th><th style="text-align:right">First on day</th><th style="text-align:right">Beds (N)</th><th>Planners bought</th><th style="text-align:right">Plants</th><th style="text-align:right">Spent</th><th style="text-align:right">Tallest</th></tr></thead>
+   <tbody>${rows.length?rows.map((e,i)=>`<tr><td class="n">${i+1}</td><td>${esc(e.team)}</td><td class="n" style="color:var(--gold)">${e.gold}</td><td class="n">${e.first==null?"–":e.first}</td><td class="n">${e.beds}</td><td>${e.planners.length?e.planners.map(id=>`<span class="chip" style="--c:${PLANNER[id].col}">${PLANNER[id].name}</span>`).join(" "):`<span class="small">none</span>`}</td><td class="n">${e.plants}</td><td class="n">${eur(e.spent)}</td><td class="n">${e.best} cm</td></tr>`).join(""):`<tr><td colspan="9" class="small">No results yet. Teams appear when they finish a season.</td></tr>`}</tbody></table></div>`:
+   `<p class="small">Ranked by plants that were really exceptional, then by the plant expert's stars.</p>
+   <div class="tw"><table class="t"><thead><tr><th>#</th><th>Team</th><th>Their health score</th><th style="text-align:right">Exceptional</th><th style="text-align:right">Really</th><th>Expert</th><th>System</th><th>Sensors</th><th style="text-align:right">Spent</th></tr></thead>
+   <tbody>${rows.length?rows.map((e,i)=>`<tr><td class="n">${i+1}</td><td>${esc(e.team)}</td><td class="small" style="color:var(--ink)">${wShort(e.weights)}</td><td class="n" style="color:var(--gold)">${e.gold}</td><td class="n" style="color:var(--leaf)">${e.real}</td><td style="color:var(--gold)">${"★".repeat(e.stars)}</td><td>${e.system==="turnkey"?"GrowBox":"Modular"} · ${e.beds} beds</td><td class="small" style="color:var(--ink)">${e.sensors.map(id=>SENS2M[id].name).join(", ")}</td><td class="n">${eur(e.spent)}</td></tr>`).join(""):`<tr><td colspan="9" class="small">No Round 2 results yet.</td></tr>`}</tbody></table></div>`}
+   <h3>Add a result code</h3>
+   <form id="codeform" class="row"><input id="c-team" type="text" placeholder="Team name" maxlength="24" style="max-width:200px"><input id="c-code" type="text" placeholder="Result code" maxlength="18" style="max-width:200px"><button class="btn primary" type="submit">Add</button><span class="small" id="c-msg"></span></form>
+   ${rows.length?`<div class="row"><button class="btn small" id="b-clear">Clear this board…</button><span id="clear-confirm"></span></div>`:""}`);
+  document.querySelectorAll("[data-br]").forEach(b=>b.onclick=()=>{boardRound=+b.dataset.br;renderBoard()});
+  $("#b-bclose").onclick=()=>{const f=boardFrom;boardFrom=null;if(f==="end"){G.phase="plan";finishSeason()}else openTitle()};
+  $("#codeform").onsubmit=async ev=>{ev.preventDefault();const code=$("#c-code").value;const id="code-"+code.toUpperCase().replace(/[^0-9A-Z]/g,"");const e=entryFromCode(code,($("#c-team").value||"").trim()||"Team",id);
+    if(!e){$("#c-msg").textContent="That code is not valid. Check for typos.";return}boardRound=e.round||1;saveLocal(e);if(DB){try{await DB.collection("runs3").doc(id).set(e)}catch(err){}}if(LIVE){liveRuns.set(id,e);livePost(e.code,e.team,id)}renderBoard()};
+  const cb=$("#b-clear");if(cb)cb.onclick=()=>{$("#clear-confirm").innerHTML=`<button class="btn small" id="b-clear2" style="background:#5a2018">Yes, remove all results</button>`;
+    $("#b-clear2").onclick=async()=>{try{localStorage.removeItem("sdl-runs3");localStorage.setItem("sdl-cleared-at",String(Date.now()))}catch(e){}if(DB){for(const e of dbRuns){try{await DB.collection("runs3").doc(e._id).delete()}catch(err){}}}renderBoard()}};
+}
+
+/* ---------- boot ---------- */
+requestAnimationFrame(frame);
+if(location.hash==="#board")openBoard("title");else openTitle();
+
+</script>
+
+</body>
+</html>
