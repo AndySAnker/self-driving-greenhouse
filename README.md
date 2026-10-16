@@ -31,3 +31,7 @@ When a team finishes, its result is sent to a live class board. Results are shor
 
 - `index.html`: the game (everything in one file)
 - `three.min.js`: three.js r128 (MIT licence), used for the 3D view
+
+## Editing the game
+
+The source is in `src/`. Run `python3 src/build.py` to rebuild `index.html`. See `CLAUDE.md`.
