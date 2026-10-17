@@ -107,7 +107,7 @@ function r2Grow(){
     G.plants[i]={c,h:4+real.height*(HMAX-4),props:real,seen,y:ms,ts,frac:.04,dead,gold:!dead&&ms!=null&&ms>=G.thr,
       label:dead?"dead":G.cur.wait>0&&G.cur.lab?"lab…":ms==null?"?":String(Math.round(ms)),extra:{seen,real,ts}};
   });
-  if(G.cur.event==="pump")toast(`A pump in bed ${G.cur.dead+1} clogged. That plant will die.`,"bad");
+  if(G.cur.event==="pump")toast(`The pump for plant ${G.cur.dead+1} clogged. That plant will die.`,"bad");
   if(G.cur.event==="camera")toast("The colour camera lost its calibration. Colour readings are very noisy this batch.","bad");
   if(G.cur.event==="crash")toast("The controller crashed. Repairs take 1 extra day.","bad");
 }
@@ -130,9 +130,9 @@ function r2Review(){
 }
 function r2OpenUpgrade(){
   const items=[];
-  if(G.system==="turnkey"){if(G.packs<TURNKEY.maxPacks)items.push({id:"pack",name:`${TURNKEY.pack} more GrowBox beds`,price:TURNKEY.packPrice,days:0})}
+  if(G.system==="turnkey"){if(G.packs<TURNKEY.maxPacks)items.push({id:"pack",name:`Room for ${TURNKEY.pack} more plants in the GrowBox`,price:TURNKEY.packPrice,days:0})}
   else{
-    items.push({id:"bed",name:"1 more bed",price:MOD.bedPrice,days:0});
+    items.push({id:"bed",name:"Room for 1 more plant",price:MOD.bedPrice,days:0});
     for(const s of SENS2)if(!G.sensors[s.id]&&s.price)items.push({id:"s:"+s.id,name:s.name,price:s.price,days:s.setup});
     for(const p of PLANNERS)if(p.price&&!G.own[p.id])items.push({id:"p:"+p.id,name:p.name,price:p.price,days:1});
   }
@@ -188,9 +188,9 @@ function openDefine(team,keepW){
 /* ---------- Step 2: build ---------- */
 function openBuild2(){
   const presets=[
-    {t:"Plug and play",what:"GrowBox Pro: 8 beds, ready on day 1",f:()=>{G.system="turnkey";G.packs=0;G.beds=TURNKEY.beds;G.own={you:1,random:1,evo:1};G.sensors=Object.fromEntries(TURNKEY.sensors.map(s=>[s,1]))}},
-    {t:"Cheap and DIY",what:"Modular: 12 beds, simple sensors",f:()=>{G.system="modular";G.beds=12;G.own={you:1,random:1,evo:1};G.sensors={ruler:1,scale:1,lab:1}}},
-    {t:"Smart software",what:"Modular: 6 beds, Bayesian optimisation, good sensors",f:()=>{G.system="modular";G.beds=6;G.own={you:1,random:1,bo:1};G.sensors={ruler:1,scale:1,camera:1,lab:1}}},
+    {t:"Plug and play",what:"GrowBox Pro: 8 plants, ready on day 1",f:()=>{G.system="turnkey";G.packs=0;G.beds=TURNKEY.beds;G.own={you:1,random:1,evo:1};G.sensors=Object.fromEntries(TURNKEY.sensors.map(s=>[s,1]))}},
+    {t:"Cheap and DIY",what:"Modular: 12 plants, simple sensors",f:()=>{G.system="modular";G.beds=12;G.own={you:1,random:1,evo:1};G.sensors={ruler:1,scale:1,lab:1}}},
+    {t:"Smart software",what:"Modular: 6 plants, Bayesian optimisation, good sensors",f:()=>{G.system="modular";G.beds=6;G.own={you:1,random:1,bo:1};G.sensors={ruler:1,scale:1,camera:1,lab:1}}},
   ];
   const render=()=>{
     if(G.system==="turnkey"){G.packs=0;G.beds=TURNKEY.beds;G.sensors=Object.fromEntries(TURNKEY.sensors.map(s=>[s,1]));G.own={you:1,random:1,evo:1}}
@@ -210,14 +210,14 @@ function openBuild2(){
      <h3>1. Ready-made or build it yourself?</h3>
      <div class="cols">
        <button class="choice ${G.system==="turnkey"?"on":""}" data-sys="turnkey"><h3>GrowBox Pro (ready-made)<span class="price">${eur(TURNKEY.price)}</span></h3>
-         <span class="what">${TURNKEY.beds} beds, a ruler, a scale and a colour camera. Planner "Tweak the best" built in.</span>
+         <span class="what">Room for ${TURNKEY.beds} plants, a ruler, a scale and a colour camera. Planner "Tweak the best" built in.</span>
          <span class="note">Works on day 1. Never breaks. But it is closed: you cannot add other sensors or planners.</span></button>
        <button class="choice ${mod?"on":""}" data-sys="modular"><h3>Modular parts (build it yourself)<span class="price">from ${eur(MOD.basePrice)}</span></h3>
-         <span class="what">A controller and 1 bed for ${eur(MOD.basePrice)}. Each extra bed ${eur(MOD.bedPrice)}. Add any sensors and planners.</span>
-         <span class="note">Cheaper per bed and flexible. But setting up takes days, and parts sometimes break.</span></button>
+         <span class="what">A controller and room for 1 plant for ${eur(MOD.basePrice)}. Each extra plant ${eur(MOD.bedPrice)}. Add any sensors and planners.</span>
+         <span class="note">Cheaper per plant and flexible. But setting up takes days, and parts sometimes break.</span></button>
      </div>
-     ${G.system==="turnkey"?`<h3>2. Beds (N)</h3><div class="stepper"><span class="num bigbeds">${G.beds}</span><span>beds, fixed</span></div><p class="small">The GrowBox has ${TURNKEY.beds} beds. You cannot add more.</p>`:
-      `<h3>2. Beds (N)</h3><div class="stepper"><button class="btn" id="b-bm" ${G.beds<=1?"disabled":""} aria-label="One bed fewer">−</button><span class="num bigbeds">${G.beds}</span><span>bed${G.beds>1?"s":""}</span><button class="btn" id="b-bp" ${G.beds>=MOD.maxBeds||G.money<MOD.bedPrice?"disabled":""} aria-label="One bed more">+</button></div><p class="small">Each extra bed: ${eur(MOD.bedPrice)}</p>`}
+     ${G.system==="turnkey"?`<h3>2. Plants at once (N)</h3><div class="stepper"><span class="num bigbeds">${G.beds}</span><span>plants, fixed</span></div><p class="small">The GrowBox holds ${TURNKEY.beds} plants. You cannot add more.</p>`:
+      `<h3>2. Plants at once (N)</h3><div class="stepper"><button class="btn" id="b-bm" ${G.beds<=1?"disabled":""} aria-label="One plant fewer">−</button><span class="num bigbeds">${G.beds}</span><span>plant${G.beds>1?"s":""}</span><button class="btn" id="b-bp" ${G.beds>=MOD.maxBeds||G.money<MOD.bedPrice?"disabled":""} aria-label="One plant more">+</button></div><p class="small">Each extra plant: ${eur(MOD.bedPrice)}</p>`}
      <h3>3. Sensors: what can you see?</h3>
      <div class="buylist">${sensorRows}</div>
      <div class="checks">${PROPS2.filter(p=>G.weights[p.k]).map(p=>meas[p.k]?`<span class="ok">✓ ${p.name}: measured by ${SENS2M[meas[p.k].by].name}</span>`:`<span class="bad">✗ ${p.name}: not measured. Your planner cannot see it!</span>`).join("")}</div>
@@ -238,7 +238,7 @@ function openBuild2(){
     if($("#b-bp"))$("#b-bp").onclick=()=>{keepTeam();G.beds++;syncEquipment();frameView();render()};
     document.querySelectorAll("[data-sen]").forEach(b=>b.onclick=()=>{keepTeam();const id=b.dataset.sen;if(id==="ruler")return;G.sensors[id]=G.sensors[id]?0:1;syncEquipment();render()});
     document.querySelectorAll("[data-pl2]").forEach(b=>b.onclick=()=>{keepTeam();const id=b.dataset.pl2;if(G.own[id])delete G.own[id];else G.own[id]=1;syncEquipment();render()});
-    if($("#b-sayB"))$("#b-sayB").onclick=()=>speak(`Build your lab. You have ${START_MONEY} dollars. First choose: a ready-made GrowBox, which works on day one but is closed, or modular parts, which are cheaper and flexible, but take days to set up and sometimes break. Then choose beds, sensors and a planner. Sensors decide what you can measure. If your health score needs something that no sensor measures, your planner cannot see it. You have ${G.money} dollars left, and setup takes ${setup} days.`);
+    if($("#b-sayB"))$("#b-sayB").onclick=()=>speak(`Build your lab. You have ${START_MONEY} dollars. First choose: a ready-made GrowBox, which works on day one but is closed, or modular parts, which are cheaper and flexible, but take days to set up and sometimes break. Then choose how many plants, sensors and a planner. Sensors decide what you can measure. If your health score needs something that no sensor measures, your planner cannot see it. You have ${G.money} dollars left, and setup takes ${setup} days.`);
     $("#b-back2").onclick=()=>{keepTeam();openDefine(G.team,G.weights)};
     $("#b-go2").onclick=()=>{keepTeam();if(G.money<0)return;const t=(G.team||"").trim()||"Team "+(100+Math.floor(rng()*900));localSet("sdl-team",t);G.team=t;r2Start()};
   };
@@ -261,7 +261,7 @@ function r2RenderTop(){
   const gold=G.data.filter(d=>d.y!=null&&d.y>=G.thr).length;
   $("#top").innerHTML=`
    <div class="panel cell"><span class="label">Round 2 · Step 3: Run</span><span class="big">Day <span id="dayval">${G.day}</span><span style="font-size:14px;color:var(--muted)"> / ${SEASON_DAYS}</span></span><div id="daybar"><i></i></div></div>
-   <div class="panel cell"><span class="label">${esc(G.team)}'s lab</span><span class="big" style="font-size:16px"><span style="color:var(--amber)">${G.system==="turnkey"?"GrowBox":"Modular"} · ${G.beds} beds</span></span></div>
+   <div class="panel cell"><span class="label">${esc(G.team)}'s lab</span><span class="big" style="font-size:16px"><span style="color:var(--amber)">${G.system==="turnkey"?"GrowBox":"Modular"} · ${G.beds} plants</span></span></div>
    <div class="panel cell"><span class="label">Health score</span><span class="big" style="font-size:14px;max-width:260px;white-space:normal">${weightText(G.weights)}</span></div>
    <div class="panel cell"><span class="label">Exceptional (${G.thrR}+)</span><span class="big" style="color:var(--gold)">${gold}</span></div>
    <div id="ctrls" class="panel"><button class="btn small" id="b-tour">How to play</button>${sayBtn("b-say2")}<button class="btn small" id="b-fast">${G.fast?"Speed: fast":"Speed: normal"}</button><button class="btn small" id="b-finish">Finish</button></div>`;
@@ -282,8 +282,8 @@ function r2RenderRight(){
    <section class="panel card"><h3>Health score of every plant</h3>
      <canvas class="chart" id="dots" style="height:280px" role="img" aria-label="Health score of every plant, batch by batch"></canvas>
      ${b?`<p class="small">Best so far: <b style="color:var(--ink)">${Math.round(b.y)}</b></p>`:""}</section>
-   <section class="panel card"><h3>Bed ${sel+1}${p&&p.frac>=1&&!p.dead?`: score ${p.y==null?"?":Math.round(p.y)}`:""}</h3>
-     ${p&&p.frac>=1?(p.dead?`<p class="small">This plant died (pump clogged).</p>`:propBars(p.props,p.seen)+`<p class="small">What your sensors measured. Click another bed to compare.</p>`):`<p class="small">Grow a batch, then click a bed to see what was measured.</p>`}</section>`;
+   <section class="panel card"><h3>Plant ${sel+1}${p&&p.frac>=1&&!p.dead?`: score ${p.y==null?"?":Math.round(p.y)}`:""}</h3>
+     ${p&&p.frac>=1?(p.dead?`<p class="small">This plant died (pump clogged).</p>`:propBars(p.props,p.seen)+`<p class="small">What your sensors measured. Click another plant to compare.</p>`):`<p class="small">Grow a batch, then click a plant to see what was measured.</p>`}</section>`;
   drawDots($("#dots"));
 }
 

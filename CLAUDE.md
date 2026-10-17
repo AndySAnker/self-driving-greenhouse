@@ -28,6 +28,7 @@ at https://andysanker.github.io/self-driving-greenhouse/ (leaderboard screen: ad
 - Easy to understand and dyslexia-friendly: Lexend font, short sentences, plain words, a Read aloud option.
 - Budget is $12,000 everywhere. Do not show the hidden growth formula to players.
 - Plot legends go in the upper right corner.
+- Say "plants", not "beds", in player-facing text: N is the number of plants grown at once. (`G.beds` in code.)
 
 ## Testing
 

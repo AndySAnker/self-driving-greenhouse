@@ -5,9 +5,9 @@ A browser game about self-driving labs, made for teaching. Players run an automa
 
 P = 1 − (1 − p)^(N·t)
 
-More beds raise N (automation). Smarter planners raise p (AI).
+More plants at once raise N (automation). Smarter planners raise p (AI).
 
-- **Round 1: Grow tall plants.** Spend $12,000 on beds and planners, then run a 49-day campaign.
+- **Round 1: Grow tall plants.** Spend $12,000 on room for more plants and on planners, then run a 49-day campaign.
 - **Round 2: What is a healthy plant?** Define health with several objectives, choose a ready-made or modular lab,
   pick sensors, and let a plant expert judge the result.
 

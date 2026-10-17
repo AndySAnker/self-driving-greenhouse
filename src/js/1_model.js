@@ -3,7 +3,7 @@
    SELF-DRIVING GREENHOUSE v3 — model
    Every plant gets its own growth conditions. A hidden analytical
    formula decides how tall it grows in one week.
-   N = plants per batch (beds, costs money)
+   N = plants per batch (G.beds in code; costs money)
    p = chance a plant is exceptional (planner quality, costs money and thinking time)
    ================================================================ */
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}

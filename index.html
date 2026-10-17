@@ -241,7 +241,7 @@ ul.lessons{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px
 
 
 <div id="app">
-  <div id="stage"><canvas id="gl" aria-label="3D greenhouse. Click a bed to act on it."></canvas>
+  <div id="stage"><canvas id="gl" aria-label="3D greenhouse. Click a plant to select it."></canvas>
     <div id="toasts" aria-live="polite"></div>
   </div>
   <div id="action" class="panel" hidden></div>
@@ -263,7 +263,7 @@ ul.lessons{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px
    SELF-DRIVING GREENHOUSE v3 — model
    Every plant gets its own growth conditions. A hidden analytical
    formula decides how tall it grows in one week.
-   N = plants per batch (beds, costs money)
+   N = plants per batch (G.beds in code; costs money)
    p = chance a plant is exceptional (planner quality, costs money and thinking time)
    ================================================================ */
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
@@ -741,12 +741,12 @@ function renderTop(){
   const gold=G.data.filter(d=>d.y>=GOLD).length;
   $("#top").innerHTML=`
    <div class="panel cell"><span class="label">Use the self-driving greenhouse</span><span class="big">Day <span id="dayval">${G.day}</span><span style="font-size:13px;color:var(--muted)"> / ${SEASON_DAYS}</span></span><div id="daybar"><i></i></div></div>
-   <div class="panel cell"><span class="label">${esc(G.team)}'s lab</span><span class="big" style="font-size:16px"><span style="color:var(--amber)">${G.beds} bed${G.beds>1?"s":""}</span> · <span style="color:var(--magenta)">${ownedPlanners().filter(p=>p.price>0).map(p=>p.name).join(", ")||"no planner bought"}</span></span></div>
+   <div class="panel cell"><span class="label">${esc(G.team)}'s lab</span><span class="big" style="font-size:16px"><span style="color:var(--amber)">${G.beds} plant${G.beds>1?"s":""}</span> · <span style="color:var(--magenta)">${ownedPlanners().filter(p=>p.price>0).map(p=>p.name).join(", ")||"no planner bought"}</span></span></div>
    <div class="panel cell"><span class="label">Exceptional plants</span><span class="big" style="color:var(--gold)">${gold}</span></div>
    <div id="ctrls" class="panel"><button class="btn small" id="b-tour">How to play</button>${sayBtn("b-say2")}<button class="btn small" id="b-fast" title="Animation speed">${G.fast?"Speed: fast":"Speed: normal"}</button><button class="btn small" id="b-finish">Finish</button></div>`;
   $("#b-fast").onclick=()=>{G.fast=!G.fast;ui()};
   $("#b-tour").onclick=()=>{if(G.phase==="plan")startTour();else toast("The tour opens when you can plan the next batch.")};
-  if($("#b-say2"))$("#b-say2").onclick=()=>{const b=best();speak(`Day ${G.day} of ${SEASON_DAYS}. You have ${gold} exceptional plant${gold===1?"":"s"}. ${b?`Your tallest plant is ${Math.round(b.y)} centimetres. `:""}On the left, set the conditions for each bed, or choose a planner. Then press Plant and grow.`)};
+  if($("#b-say2"))$("#b-say2").onclick=()=>{const b=best();speak(`Day ${G.day} of ${SEASON_DAYS}. You have ${gold} exceptional plant${gold===1?"":"s"}. ${b?`Your tallest plant is ${Math.round(b.y)} centimetres. `:""}On the left, set the conditions for each plant, or choose a planner. Then press Plant and grow.`)};
   $("#b-finish").onclick=()=>{if(G.phase==="plan")finishSeason()};
   updateClock();
   document.documentElement.style.setProperty("--toph",$("#top").offsetHeight+"px");
@@ -767,14 +767,14 @@ function renderLeft(){
    <section class="panel card"><h3>Next batch <span style="color:var(--amber)">· N = ${G.beds}</span></h3>
      <div class="kh"><span></span>${KNOBS.map(k=>`<span style="color:${k.col}">${k.name}</span>`).join("")}</div>
      <div class="prows">${rows}</div>
-     <div class="editor"><span class="label">Bed ${sel+1}</span>
+     <div class="editor"><span class="label">Plant ${sel+1}</span>
        ${KNOBS.map((k,j)=>`<label class="sl"><span>${k.name}</span><input type="range" id="k${j}" min="0" max="1" step="0.01" value="${c[j]}" ${busy?"disabled":""} style="accent-color:${k.col}"><b class="num" id="kv${j}">${fmtK(j,c[j])}</b><span class="u">${k.unit}</span></label>`).join("")}
      </div>
      ${G.beds>1?`<div class="rowbtns">
-       <button class="btn small" id="b-copy" ${busy?"disabled":""}>Copy bed ${sel+1} to all</button>
+       <button class="btn small" id="b-copy" ${busy?"disabled":""}>Copy plant ${sel+1} to all</button>
        <button class="btn small" id="b-rand" ${busy?"disabled":""}>Randomise all</button>
        <button class="btn small" id="b-best" ${busy||!G.data.length?"disabled":""}>Best + small changes</button></div>`:""}</section>
-   <section class="panel card"><h3>Who sets them? <span style="color:var(--magenta)">p</span></h3>
+   <section class="panel card"><h3>Who chooses the conditions? <span style="color:var(--magenta)">p</span></h3>
      <div class="planners">${plannerCards}</div></section>`;
   document.querySelectorAll("[data-pl]").forEach(b=>b.onclick=()=>setPlanner(b.dataset.pl));
   document.querySelectorAll("[data-row]").forEach(b=>b.onclick=()=>selectPlant(+b.dataset.row));
@@ -857,11 +857,11 @@ function openTitle(){
    <h2>Self-Driving Greenhouse</h2>
    <p>Build a greenhouse that runs experiments by itself, and use it to grow exceptional basil.</p>
    <div class="cols">
-     <button class="choice" id="r1"><h3>Round 1: Grow tall plants</h3><span class="what">Health = height. Choose more beds or a smarter planner, then run your lab for 49 days.</span><span class="note">About 10 minutes</span></button>
+     <button class="choice" id="r1"><h3>Round 1: Grow tall plants</h3><span class="what">Health = height. Choose more plants or a smarter planner, then run your lab for 49 days.</span><span class="note">About 10 minutes</span></button>
      <button class="choice" id="r2"><h3>Round 2: What is a healthy plant?</h3><span class="what">You decide what "healthy" means. Pick sensors to measure it. Buy a ready-made system or build your own from parts.</span><span class="note">About 15 minutes · best after Round 1</span></button>
    </div>
    <div class="row"><button class="btn" id="b-board">Class leaderboard</button>${typeof LIVE!=="undefined"&&LIVE?`<span class="small">Class: ${esc(LIVE.name)}</span>`:""}</div>`);
-  if($("#b-sayT"))$("#b-sayT").onclick=()=>speak("Self-driving greenhouse. Round 1: grow tall plants. Choose more beds or a smarter planner. Round 2: what is a healthy plant? You decide what healthy means, pick sensors, and buy a ready-made system or build your own from parts.");
+  if($("#b-sayT"))$("#b-sayT").onclick=()=>speak("Self-driving greenhouse. Round 1: grow tall plants. Choose more plants or a smarter planner. Round 2: what is a healthy plant? You decide what healthy means, pick sensors, and buy a ready-made system or build your own from parts.");
   $("#r1").onclick=()=>openBuild(localGet("sdl-team")||"");
   $("#r2").onclick=()=>openDefine(localGet("sdl-team")||"");
   $("#b-board").onclick=()=>openBoard("title");
@@ -879,7 +879,7 @@ const INFO={
     "Self-driving labs use it to find new materials and medicines with fewer experiments."]}),
   twin:()=>({t:"What is a digital twin?",x:[
     "A digital twin is a <b>computer model</b> of something real. Here, it is a model of how basil grows.",
-    "The planner tests thousands of ideas on the twin first. Then it uses your real beds only for the best ideas.",
+    "The planner tests thousands of ideas on the twin first. Then it grows real plants only for the best ideas.",
     "So it can make good picks from the very first batch, before you have any results.",
     "A twin is never perfect. Bayesian optimisation compares it with your real plants and corrects it.",
     `<b>Rough twin</b> (${eur(PLANNER.rough.price)}): quick and cheap, but only roughly right. Thinks ${PLANNER.rough.days} days before each batch.`,
@@ -906,9 +906,9 @@ function openBuild(team){
        <li>Then you use your greenhouse for <b>${SEASON_DAYS} days</b>. Grow as many exceptional plants as you can.</li></ul></div>
      <div class="howbox">
        <h3>First, build your greenhouse</h3>
-       <p>Now you spend your money. You can buy <b>equipment</b> (more beds) and <b>algorithms</b> (smart planners). Two numbers decide how many exceptional plants you find:</p>
+       <p>Now you spend your money. You can buy <b>equipment</b> (room for more plants) and <b>algorithms</b> (smart planners). Two numbers decide how many exceptional plants you find:</p>
        <div class="np">
-         <span class="k" style="color:var(--amber)">N</span><p><b>How many plants you grow at once.</b> Each bed holds 1 plant. More beds give a bigger N.</p>
+         <span class="k" style="color:var(--amber)">N</span><p><b>How many plants you grow at once.</b> Buy room for more plants to make N bigger.</p>
          <span class="k" style="color:var(--magenta)">p</span><p><b>The chance that one plant is exceptional.</b> A planner is an algorithm that picks the water, light, fertiliser and temperature. With random picks, p is only about ${(P_RANDOM*100).toFixed(1)}&nbsp;%. A smart planner learns from your plants and makes p bigger.</p>
        </div>
        <p>A big N and a big p both help. Your money cannot buy everything, so choose your mix.</p>
@@ -916,9 +916,9 @@ function openBuild(team){
      </div>
      <div class="buildgrid">
        <section class="bcol"><h3 style="color:var(--amber)">More plants (N)</h3>
-         <p class="small">1 bed grows 1 plant every ${GROW_DAYS} days. Your first bed is free.</p>
-         <div class="stepper"><button class="btn" id="b-minus" ${G.beds<=BEDS_START?"disabled":""} aria-label="One bed fewer">−</button><span class="num bigbeds">${G.beds}</span><span>bed${G.beds>1?"s":""}</span><button class="btn" id="b-plus" ${G.beds>=BEDS_MAX||G.money<BEDS_PRICE?"disabled":""} aria-label="One bed more">+</button></div>
-         <p class="small">Each extra bed: ${eur(BEDS_PRICE)}</p></section>
+         <p class="small">Each plant grows for ${GROW_DAYS} days. Then a new one starts. Your first plant is free.</p>
+         <div class="stepper"><button class="btn" id="b-minus" ${G.beds<=BEDS_START?"disabled":""} aria-label="One plant fewer">−</button><span class="num bigbeds">${G.beds}</span><span>plant${G.beds>1?"s":""} at once</span><button class="btn" id="b-plus" ${G.beds>=BEDS_MAX||G.money<BEDS_PRICE?"disabled":""} aria-label="One plant more">+</button></div>
+         <p class="small">Each extra plant: ${eur(BEDS_PRICE)}. It gets its own pot, lamp and pump.</p></section>
        <section class="bcol"><h3 style="color:var(--magenta)">Smarter planning (p)</h3>
          <p class="small">A planner picks the growing conditions. "You decide" and "Random" are free. Smart planners cost money, and some need extra days to think.</p>
          <div class="inforow">${infoBtn("bo","What is Bayesian optimisation?")}${infoBtn("twin","What is a digital twin?")}</div>
@@ -929,7 +929,7 @@ function openBuild(team){
      <div class="row"><label class="label" for="team">Team name</label><input id="team" type="text" maxlength="24" placeholder="e.g. Basil Instinct" value="${esc(G.team)}"></div>
      <div class="row"><button class="btn primary big" id="b-build">Build it and start using it ▶</button><button class="btn" id="b-board">Class leaderboard</button></div>`);
     overlay.scrollTop=keepScroll;
-    if($("#b-say"))$("#b-say").onclick=()=>speak(`You won ${START_MONEY} dollars to build a self-driving greenhouse. Your goal: grow healthy basil plants. We measure health as height. A plant of ${GOLD} centimetres or more is exceptional. Then you use your greenhouse for ${SEASON_DAYS} days. Grow as many exceptional plants as you can. First, build your greenhouse. You can buy equipment and algorithms. Two numbers decide how many exceptional plants you find. N is how many plants you grow at once. More beds, for ${BEDS_PRICE} dollars each, give a bigger N. p is the chance that one plant is exceptional. A smart planner picks better growing conditions and makes p bigger. Smart planners cost money, and some need extra days to think. Spend the money now. You cannot buy more later. You have ${G.money} dollars left.`);
+    if($("#b-say"))$("#b-say").onclick=()=>speak(`You won ${START_MONEY} dollars to build a self-driving greenhouse. Your goal: grow healthy basil plants. We measure health as height. A plant of ${GOLD} centimetres or more is exceptional. Then you use your greenhouse for ${SEASON_DAYS} days. Grow as many exceptional plants as you can. First, build your greenhouse. You can buy equipment and algorithms. Two numbers decide how many exceptional plants you find. N is how many plants you grow at once. Each extra plant costs ${BEDS_PRICE} dollars and makes N bigger. p is the chance that one plant is exceptional. A smart planner picks better growing conditions and makes p bigger. Smart planners cost money, and some need extra days to think. Spend the money now. You cannot buy more later. You have ${G.money} dollars left.`);
     if($("#b-say-info"))$("#b-say-info").onclick=()=>speak(I.t+" "+I.x.join(" "));
     document.querySelectorAll("[data-info]").forEach(b=>b.onclick=()=>{keepTeam();info=info===b.dataset.info?null:b.dataset.info;render()});
     if($("#b-info-close"))$("#b-info-close").onclick=()=>{keepTeam();info=null;render()};
@@ -1001,7 +1001,7 @@ function finishSeason(){
    <h3>Your lab on the curve from the paper</h3>
    <p>Chance of having found an exceptional plant by day t, <span class="num" style="color:var(--gold)">P = 1 − (1 − p)<sup>N·t</sup></span>, with your N and p.</p>
    <canvas class="wide" id="curves"></canvas>
-   <div class="legend"><span style="--c:#3a9a3a">1 bed, random</span><span style="--c:#6ab0de">Your beds, random</span><span style="--c:#2a3fa8">1 bed, your planning</span><span style="--c:#ef4a52">Your lab</span></div>
+   <div class="legend"><span style="--c:#3a9a3a">1 plant, random</span><span style="--c:#6ab0de">Your N, random</span><span style="--c:#2a3fa8">1 plant, your planning</span><span style="--c:#ef4a52">Your lab</span></div>
    <h3>Where the tall plants were</h3>
    <p class="small">Tallest plant possible for each water and light. Gold: exceptional is possible here. Dots: your plants.</p>
    <canvas class="wide" id="land" style="height:280px"></canvas>
@@ -1012,7 +1012,7 @@ function finishSeason(){
    <p>Is height really the best measure of a healthy plant? In Round 2 you decide what healthy means, pick sensors, and choose a ready-made or a modular lab.</p>
    <div class="row"><button class="btn primary big" id="b-r2">Go to Round 2 ▶</button><button class="btn" id="b-again">Play Round 1 again</button><button class="btn" id="b-board">Open leaderboard</button><button class="btn" id="b-home">Start screen</button></div>`);
   drawSeasonCurves($("#curves"));drawLandscape($("#land"));
-  if($("#b-say3"))$("#b-say3").onclick=()=>speak(`Season over. You grew ${s.plants} plants. ${s.gold} were exceptional. ${G.firstGold==null?"None reached 40 centimetres.":`The first one came on day ${G.firstGold}.`} The curve shows your chance of finding an exceptional plant over time. More beds raise N. A smarter planner raises p. The map shows where tall plants were possible, and where your plants were.`);
+  if($("#b-say3"))$("#b-say3").onclick=()=>speak(`Season over. You grew ${s.plants} plants. ${s.gold} were exceptional. ${G.firstGold==null?"None reached 40 centimetres.":`The first one came on day ${G.firstGold}.`} The curve shows your chance of finding an exceptional plant over time. More plants at once raise N. A smarter planner raises p. The map shows where tall plants were possible, and where your plants were.`);
   $("#b-again").onclick=()=>openBuild(G.team);
   $("#b-r2").onclick=$("#b-r2top").onclick=()=>openDefine(G.team);
   $("#b-home").onclick=openTitle;
@@ -1130,7 +1130,7 @@ function r2Grow(){
     G.plants[i]={c,h:4+real.height*(HMAX-4),props:real,seen,y:ms,ts,frac:.04,dead,gold:!dead&&ms!=null&&ms>=G.thr,
       label:dead?"dead":G.cur.wait>0&&G.cur.lab?"lab…":ms==null?"?":String(Math.round(ms)),extra:{seen,real,ts}};
   });
-  if(G.cur.event==="pump")toast(`A pump in bed ${G.cur.dead+1} clogged. That plant will die.`,"bad");
+  if(G.cur.event==="pump")toast(`The pump for plant ${G.cur.dead+1} clogged. That plant will die.`,"bad");
   if(G.cur.event==="camera")toast("The colour camera lost its calibration. Colour readings are very noisy this batch.","bad");
   if(G.cur.event==="crash")toast("The controller crashed. Repairs take 1 extra day.","bad");
 }
@@ -1153,9 +1153,9 @@ function r2Review(){
 }
 function r2OpenUpgrade(){
   const items=[];
-  if(G.system==="turnkey"){if(G.packs<TURNKEY.maxPacks)items.push({id:"pack",name:`${TURNKEY.pack} more GrowBox beds`,price:TURNKEY.packPrice,days:0})}
+  if(G.system==="turnkey"){if(G.packs<TURNKEY.maxPacks)items.push({id:"pack",name:`Room for ${TURNKEY.pack} more plants in the GrowBox`,price:TURNKEY.packPrice,days:0})}
   else{
-    items.push({id:"bed",name:"1 more bed",price:MOD.bedPrice,days:0});
+    items.push({id:"bed",name:"Room for 1 more plant",price:MOD.bedPrice,days:0});
     for(const s of SENS2)if(!G.sensors[s.id]&&s.price)items.push({id:"s:"+s.id,name:s.name,price:s.price,days:s.setup});
     for(const p of PLANNERS)if(p.price&&!G.own[p.id])items.push({id:"p:"+p.id,name:p.name,price:p.price,days:1});
   }
@@ -1211,9 +1211,9 @@ function openDefine(team,keepW){
 /* ---------- Step 2: build ---------- */
 function openBuild2(){
   const presets=[
-    {t:"Plug and play",what:"GrowBox Pro: 8 beds, ready on day 1",f:()=>{G.system="turnkey";G.packs=0;G.beds=TURNKEY.beds;G.own={you:1,random:1,evo:1};G.sensors=Object.fromEntries(TURNKEY.sensors.map(s=>[s,1]))}},
-    {t:"Cheap and DIY",what:"Modular: 12 beds, simple sensors",f:()=>{G.system="modular";G.beds=12;G.own={you:1,random:1,evo:1};G.sensors={ruler:1,scale:1,lab:1}}},
-    {t:"Smart software",what:"Modular: 6 beds, Bayesian optimisation, good sensors",f:()=>{G.system="modular";G.beds=6;G.own={you:1,random:1,bo:1};G.sensors={ruler:1,scale:1,camera:1,lab:1}}},
+    {t:"Plug and play",what:"GrowBox Pro: 8 plants, ready on day 1",f:()=>{G.system="turnkey";G.packs=0;G.beds=TURNKEY.beds;G.own={you:1,random:1,evo:1};G.sensors=Object.fromEntries(TURNKEY.sensors.map(s=>[s,1]))}},
+    {t:"Cheap and DIY",what:"Modular: 12 plants, simple sensors",f:()=>{G.system="modular";G.beds=12;G.own={you:1,random:1,evo:1};G.sensors={ruler:1,scale:1,lab:1}}},
+    {t:"Smart software",what:"Modular: 6 plants, Bayesian optimisation, good sensors",f:()=>{G.system="modular";G.beds=6;G.own={you:1,random:1,bo:1};G.sensors={ruler:1,scale:1,camera:1,lab:1}}},
   ];
   const render=()=>{
     if(G.system==="turnkey"){G.packs=0;G.beds=TURNKEY.beds;G.sensors=Object.fromEntries(TURNKEY.sensors.map(s=>[s,1]));G.own={you:1,random:1,evo:1}}
@@ -1233,14 +1233,14 @@ function openBuild2(){
      <h3>1. Ready-made or build it yourself?</h3>
      <div class="cols">
        <button class="choice ${G.system==="turnkey"?"on":""}" data-sys="turnkey"><h3>GrowBox Pro (ready-made)<span class="price">${eur(TURNKEY.price)}</span></h3>
-         <span class="what">${TURNKEY.beds} beds, a ruler, a scale and a colour camera. Planner "Tweak the best" built in.</span>
+         <span class="what">Room for ${TURNKEY.beds} plants, a ruler, a scale and a colour camera. Planner "Tweak the best" built in.</span>
          <span class="note">Works on day 1. Never breaks. But it is closed: you cannot add other sensors or planners.</span></button>
        <button class="choice ${mod?"on":""}" data-sys="modular"><h3>Modular parts (build it yourself)<span class="price">from ${eur(MOD.basePrice)}</span></h3>
-         <span class="what">A controller and 1 bed for ${eur(MOD.basePrice)}. Each extra bed ${eur(MOD.bedPrice)}. Add any sensors and planners.</span>
-         <span class="note">Cheaper per bed and flexible. But setting up takes days, and parts sometimes break.</span></button>
+         <span class="what">A controller and room for 1 plant for ${eur(MOD.basePrice)}. Each extra plant ${eur(MOD.bedPrice)}. Add any sensors and planners.</span>
+         <span class="note">Cheaper per plant and flexible. But setting up takes days, and parts sometimes break.</span></button>
      </div>
-     ${G.system==="turnkey"?`<h3>2. Beds (N)</h3><div class="stepper"><span class="num bigbeds">${G.beds}</span><span>beds, fixed</span></div><p class="small">The GrowBox has ${TURNKEY.beds} beds. You cannot add more.</p>`:
-      `<h3>2. Beds (N)</h3><div class="stepper"><button class="btn" id="b-bm" ${G.beds<=1?"disabled":""} aria-label="One bed fewer">−</button><span class="num bigbeds">${G.beds}</span><span>bed${G.beds>1?"s":""}</span><button class="btn" id="b-bp" ${G.beds>=MOD.maxBeds||G.money<MOD.bedPrice?"disabled":""} aria-label="One bed more">+</button></div><p class="small">Each extra bed: ${eur(MOD.bedPrice)}</p>`}
+     ${G.system==="turnkey"?`<h3>2. Plants at once (N)</h3><div class="stepper"><span class="num bigbeds">${G.beds}</span><span>plants, fixed</span></div><p class="small">The GrowBox holds ${TURNKEY.beds} plants. You cannot add more.</p>`:
+      `<h3>2. Plants at once (N)</h3><div class="stepper"><button class="btn" id="b-bm" ${G.beds<=1?"disabled":""} aria-label="One plant fewer">−</button><span class="num bigbeds">${G.beds}</span><span>plant${G.beds>1?"s":""}</span><button class="btn" id="b-bp" ${G.beds>=MOD.maxBeds||G.money<MOD.bedPrice?"disabled":""} aria-label="One plant more">+</button></div><p class="small">Each extra plant: ${eur(MOD.bedPrice)}</p>`}
      <h3>3. Sensors: what can you see?</h3>
      <div class="buylist">${sensorRows}</div>
      <div class="checks">${PROPS2.filter(p=>G.weights[p.k]).map(p=>meas[p.k]?`<span class="ok">✓ ${p.name}: measured by ${SENS2M[meas[p.k].by].name}</span>`:`<span class="bad">✗ ${p.name}: not measured. Your planner cannot see it!</span>`).join("")}</div>
@@ -1261,7 +1261,7 @@ function openBuild2(){
     if($("#b-bp"))$("#b-bp").onclick=()=>{keepTeam();G.beds++;syncEquipment();frameView();render()};
     document.querySelectorAll("[data-sen]").forEach(b=>b.onclick=()=>{keepTeam();const id=b.dataset.sen;if(id==="ruler")return;G.sensors[id]=G.sensors[id]?0:1;syncEquipment();render()});
     document.querySelectorAll("[data-pl2]").forEach(b=>b.onclick=()=>{keepTeam();const id=b.dataset.pl2;if(G.own[id])delete G.own[id];else G.own[id]=1;syncEquipment();render()});
-    if($("#b-sayB"))$("#b-sayB").onclick=()=>speak(`Build your lab. You have ${START_MONEY} dollars. First choose: a ready-made GrowBox, which works on day one but is closed, or modular parts, which are cheaper and flexible, but take days to set up and sometimes break. Then choose beds, sensors and a planner. Sensors decide what you can measure. If your health score needs something that no sensor measures, your planner cannot see it. You have ${G.money} dollars left, and setup takes ${setup} days.`);
+    if($("#b-sayB"))$("#b-sayB").onclick=()=>speak(`Build your lab. You have ${START_MONEY} dollars. First choose: a ready-made GrowBox, which works on day one but is closed, or modular parts, which are cheaper and flexible, but take days to set up and sometimes break. Then choose how many plants, sensors and a planner. Sensors decide what you can measure. If your health score needs something that no sensor measures, your planner cannot see it. You have ${G.money} dollars left, and setup takes ${setup} days.`);
     $("#b-back2").onclick=()=>{keepTeam();openDefine(G.team,G.weights)};
     $("#b-go2").onclick=()=>{keepTeam();if(G.money<0)return;const t=(G.team||"").trim()||"Team "+(100+Math.floor(rng()*900));localSet("sdl-team",t);G.team=t;r2Start()};
   };
@@ -1284,7 +1284,7 @@ function r2RenderTop(){
   const gold=G.data.filter(d=>d.y!=null&&d.y>=G.thr).length;
   $("#top").innerHTML=`
    <div class="panel cell"><span class="label">Round 2 · Step 3: Run</span><span class="big">Day <span id="dayval">${G.day}</span><span style="font-size:14px;color:var(--muted)"> / ${SEASON_DAYS}</span></span><div id="daybar"><i></i></div></div>
-   <div class="panel cell"><span class="label">${esc(G.team)}'s lab</span><span class="big" style="font-size:16px"><span style="color:var(--amber)">${G.system==="turnkey"?"GrowBox":"Modular"} · ${G.beds} beds</span></span></div>
+   <div class="panel cell"><span class="label">${esc(G.team)}'s lab</span><span class="big" style="font-size:16px"><span style="color:var(--amber)">${G.system==="turnkey"?"GrowBox":"Modular"} · ${G.beds} plants</span></span></div>
    <div class="panel cell"><span class="label">Health score</span><span class="big" style="font-size:14px;max-width:260px;white-space:normal">${weightText(G.weights)}</span></div>
    <div class="panel cell"><span class="label">Exceptional (${G.thrR}+)</span><span class="big" style="color:var(--gold)">${gold}</span></div>
    <div id="ctrls" class="panel"><button class="btn small" id="b-tour">How to play</button>${sayBtn("b-say2")}<button class="btn small" id="b-fast">${G.fast?"Speed: fast":"Speed: normal"}</button><button class="btn small" id="b-finish">Finish</button></div>`;
@@ -1305,8 +1305,8 @@ function r2RenderRight(){
    <section class="panel card"><h3>Health score of every plant</h3>
      <canvas class="chart" id="dots" style="height:280px" role="img" aria-label="Health score of every plant, batch by batch"></canvas>
      ${b?`<p class="small">Best so far: <b style="color:var(--ink)">${Math.round(b.y)}</b></p>`:""}</section>
-   <section class="panel card"><h3>Bed ${sel+1}${p&&p.frac>=1&&!p.dead?`: score ${p.y==null?"?":Math.round(p.y)}`:""}</h3>
-     ${p&&p.frac>=1?(p.dead?`<p class="small">This plant died (pump clogged).</p>`:propBars(p.props,p.seen)+`<p class="small">What your sensors measured. Click another bed to compare.</p>`):`<p class="small">Grow a batch, then click a bed to see what was measured.</p>`}</section>`;
+   <section class="panel card"><h3>Plant ${sel+1}${p&&p.frac>=1&&!p.dead?`: score ${p.y==null?"?":Math.round(p.y)}`:""}</h3>
+     ${p&&p.frac>=1?(p.dead?`<p class="small">This plant died (pump clogged).</p>`:propBars(p.props,p.seen)+`<p class="small">What your sensors measured. Click another plant to compare.</p>`):`<p class="small">Grow a batch, then click a plant to see what was measured.</p>`}</section>`;
   drawDots($("#dots"));
 }
 
@@ -1381,23 +1381,23 @@ function tourSteps(){
   if(G.round===2)return tourStepsR2();
   return [
     {t:"Use your self-driving greenhouse",
-     x:`Your lab is built. You have ${SEASON_DAYS} days to find exceptional plants.<br>This short tour shows what to click, one step at a time.`},
+     x:`Your greenhouse is built. You have ${SEASON_DAYS} days to find exceptional plants.<br>This short tour shows what to click, one step at a time.`},
     {sel:"#top .cell:first-child",t:"Time",
-     x:`The season has ${SEASON_DAYS} days. Each batch of plants grows for ${GROW_DAYS} days. Smart planners also need days to think.`},
-    {sel:"#left .kh, #left .prows",t:"Your beds",
-     x:`Each row is one bed: one plant in the next batch. You have <b>${G.beds}</b> (this is N).<br>The bars show water, light, fertiliser and temperature.`},
-    {sel:"#left .editor, #left .rowbtns",t:"Set the conditions",
-     x:`Click a row, or a bed in the greenhouse. Then move the sliders.${G.beds>1?" The buttons below copy or mix conditions for all beds.":""}`},
-    {sel:"#left .planners",t:"Who sets them? (p)",
-     x:"Or let someone else choose: Random, or a planner you bought. Planners learn from every plant you grow. Some think for a few days first."},
+     x:`The season has ${SEASON_DAYS} days. Each batch of plants grows for ${GROW_DAYS} days. Smart planners also need a few days to think.`},
+    {sel:"#left .kh, #left .prows",t:"Your plants (N)",
+     x:`Each row is one plant in the next batch. You grow <b>${G.beds}</b> plant${G.beds>1?"s":""} at once. This is N.<br>The coloured bars show its growing conditions: water, light, fertiliser and temperature.`},
+    {sel:"#left .editor, #left .rowbtns",t:"Choose the conditions yourself",
+     x:`Click a row, or a plant in the greenhouse. Then move the sliders to set its water, light, fertiliser and temperature.${G.beds>1?" The buttons below copy or mix the conditions for all plants.":""}`},
+    {sel:"#left .planners",t:"Or let a planner choose (p)",
+     x:"Instead of moving the sliders yourself, a planner can choose the conditions for you. <b>Random</b> picks by chance. A planner you bought learns from every plant you grow, so p goes up. Some planners think for a few days first."},
     {rect:stageRect,t:"Your greenhouse",
-     x:"Watch your plants grow here. Click a bed to select it. Drag to turn the view. Scroll or pinch to zoom."},
+     x:"Watch your plants grow here. Click a plant to select it. Drag to turn the view. Scroll or pinch to zoom."},
     {sel:"#right .card:first-child",t:"Results",
-     x:`Every plant becomes a dot: its height, batch by batch. Gold dots are exceptional: <b>${GOLD} cm</b> or taller.`},
+     x:`Every plant you grow becomes a dot. Higher dots are taller plants. Gold dots are exceptional: <b>${GOLD} cm</b> or taller.<br>${G.own.rough||G.own.twin?"Your digital twin also adds <b>hollow circles</b>. These are simulated plants: the twin's prediction, not real plants. Compare them with the real dots to see how good the twin is.":"Teams with a digital twin also see <b>hollow circles</b>. These are simulated plants: the twin's prediction, not real plants."}`},
     {sel:"#top .cell:nth-last-child(2)",t:"Exceptional plants",
-     x:"Your score. The class leaderboard ranks teams by this number. Ties are broken by the day of the first one."},
+     x:"This is your score: the number of exceptional plants. The class leaderboard ranks teams by it. If two teams have the same score, the team that found its first one earlier wins."},
     {sel:"#action",t:"Start a batch",
-     x:`When you are ready, press <b>Plant &amp; grow</b>. After ${GROW_DAYS} days, look at the results and choose again.`},
+     x:`When the conditions are set, press <b>Plant &amp; grow</b>. After ${GROW_DAYS} days, look at the results. Then choose the conditions for the next batch.`},
     {sel:"#ctrls",t:"Help and speed",
      x:"<b>Speed</b> makes days pass faster. <b>Read aloud</b> reads the screen. <b>How to play</b> shows this tour again. <b>Finish</b> ends the season early.",last:true},
   ];
@@ -1408,13 +1408,13 @@ function tourStepsR2(){
   const mod=G.system!=="turnkey";
   const s=[
     {t:"Round 2: what is new",
-     x:"The greenhouse works like in Round 1: beds, sliders, planners and <b>Plant &amp; grow</b>.<br>This short tour only shows what is new."},
+     x:"The greenhouse works like in Round 1: plants, sliders, planners and <b>Plant &amp; grow</b>.<br>This short tour only shows what is new."},
     {sel:"#top .cell:nth-child(3)",t:"Your health score",
      x:"Plants are no longer judged by height alone. This is <b>your</b> definition of a healthy plant. The planners try to make this score high."},
     {sel:"#right .card:first-child",t:"Score, not height",
      x:`The dots now show each plant’s health score. Gold dots are exceptional: a score of <b>${G.thrR}</b> or more.`},
     {sel:"#right .card:nth-child(2)",t:"What your sensors saw",
-     x:"After a batch, click a bed to see what your sensors measured. Sensors can be noisy. <b>Not measured</b> means your planner cannot see that property at all."},
+     x:"After a batch, click a plant to see what your sensors measured. Sensors can be noisy. <b>Not measured</b> means your planner cannot see that property at all."},
     {sel:"#top .cell:nth-child(2)",t:mod?"Your modular lab":"Your GrowBox",
      x:mod?"Parts you built yourself can break: a pump can clog, the computer can crash, or the camera can fail. A broken part can cost you plants or days."
           :"Your GrowBox never breaks. But it is closed: you cannot add other sensors or planners."},
@@ -1614,7 +1614,7 @@ function renderBoard(){
   openOverlay(`<div class="row" style="justify-content:space-between"><h2>Class leaderboard</h2><button class="btn" id="b-bclose">Back</button></div>
    <p class="small">${DB?"Results are saved on this page for everyone who can open it.":LIVE?`Live class board “${esc(LIVE.name)}”: ${liveState==="live"?"connected. Results from everyone playing with this link appear here.":liveState==="error"?"not reachable right now. Type in the result codes below instead.":"connecting…"}`:"Results are saved in this browser. Use one computer as the class screen."} Ranked by exceptional plants, then by the day of the first one.</p>
    <div class="row"><button class="btn small ${boardRound===1?"primary":""}" data-br="1">Round 1</button><button class="btn small ${boardRound===2?"primary":""}" data-br="2">Round 2</button></div>
-   ${boardRound===1?`<div class="tw"><table class="t"><thead><tr><th>#</th><th>Team</th><th style="text-align:right">Exceptional</th><th style="text-align:right">First on day</th><th style="text-align:right">Beds (N)</th><th>Planners bought</th><th style="text-align:right">Plants</th><th style="text-align:right">Spent</th><th style="text-align:right">Tallest</th></tr></thead>
+   ${boardRound===1?`<div class="tw"><table class="t"><thead><tr><th>#</th><th>Team</th><th style="text-align:right">Exceptional</th><th style="text-align:right">First on day</th><th style="text-align:right">Plants at once (N)</th><th>Planners bought</th><th style="text-align:right">Plants grown</th><th style="text-align:right">Spent</th><th style="text-align:right">Tallest</th></tr></thead>
    <tbody>${rows.length?rows.map((e,i)=>`<tr><td class="n">${i+1}</td><td>${esc(e.team)}</td><td class="n" style="color:var(--gold)">${e.gold}</td><td class="n">${e.first==null?"–":e.first}</td><td class="n">${e.beds}</td><td>${e.planners.length?e.planners.map(id=>`<span class="chip" style="--c:${PLANNER[id].col}">${PLANNER[id].name}</span>`).join(" "):`<span class="small">none</span>`}</td><td class="n">${e.plants}</td><td class="n">${eur(e.spent)}</td><td class="n">${e.best} cm</td></tr>`).join(""):`<tr><td colspan="9" class="small">No results yet. Teams appear when they finish a season.</td></tr>`}</tbody></table></div>`:
    `<p class="small">Ranked by plants that were really exceptional, then by the plant expert's stars.</p>
    <div class="tw"><table class="t"><thead><tr><th>#</th><th>Team</th><th>Their health score</th><th style="text-align:right">Exceptional</th><th style="text-align:right">Really</th><th>Expert</th><th>System</th><th>Sensors</th><th style="text-align:right">Spent</th></tr></thead>

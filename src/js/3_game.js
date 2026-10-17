@@ -116,12 +116,12 @@ function renderTop(){
   const gold=G.data.filter(d=>d.y>=GOLD).length;
   $("#top").innerHTML=`
    <div class="panel cell"><span class="label">Use the self-driving greenhouse</span><span class="big">Day <span id="dayval">${G.day}</span><span style="font-size:13px;color:var(--muted)"> / ${SEASON_DAYS}</span></span><div id="daybar"><i></i></div></div>
-   <div class="panel cell"><span class="label">${esc(G.team)}'s lab</span><span class="big" style="font-size:16px"><span style="color:var(--amber)">${G.beds} bed${G.beds>1?"s":""}</span> · <span style="color:var(--magenta)">${ownedPlanners().filter(p=>p.price>0).map(p=>p.name).join(", ")||"no planner bought"}</span></span></div>
+   <div class="panel cell"><span class="label">${esc(G.team)}'s lab</span><span class="big" style="font-size:16px"><span style="color:var(--amber)">${G.beds} plant${G.beds>1?"s":""}</span> · <span style="color:var(--magenta)">${ownedPlanners().filter(p=>p.price>0).map(p=>p.name).join(", ")||"no planner bought"}</span></span></div>
    <div class="panel cell"><span class="label">Exceptional plants</span><span class="big" style="color:var(--gold)">${gold}</span></div>
    <div id="ctrls" class="panel"><button class="btn small" id="b-tour">How to play</button>${sayBtn("b-say2")}<button class="btn small" id="b-fast" title="Animation speed">${G.fast?"Speed: fast":"Speed: normal"}</button><button class="btn small" id="b-finish">Finish</button></div>`;
   $("#b-fast").onclick=()=>{G.fast=!G.fast;ui()};
   $("#b-tour").onclick=()=>{if(G.phase==="plan")startTour();else toast("The tour opens when you can plan the next batch.")};
-  if($("#b-say2"))$("#b-say2").onclick=()=>{const b=best();speak(`Day ${G.day} of ${SEASON_DAYS}. You have ${gold} exceptional plant${gold===1?"":"s"}. ${b?`Your tallest plant is ${Math.round(b.y)} centimetres. `:""}On the left, set the conditions for each bed, or choose a planner. Then press Plant and grow.`)};
+  if($("#b-say2"))$("#b-say2").onclick=()=>{const b=best();speak(`Day ${G.day} of ${SEASON_DAYS}. You have ${gold} exceptional plant${gold===1?"":"s"}. ${b?`Your tallest plant is ${Math.round(b.y)} centimetres. `:""}On the left, set the conditions for each plant, or choose a planner. Then press Plant and grow.`)};
   $("#b-finish").onclick=()=>{if(G.phase==="plan")finishSeason()};
   updateClock();
   document.documentElement.style.setProperty("--toph",$("#top").offsetHeight+"px");
@@ -142,14 +142,14 @@ function renderLeft(){
    <section class="panel card"><h3>Next batch <span style="color:var(--amber)">· N = ${G.beds}</span></h3>
      <div class="kh"><span></span>${KNOBS.map(k=>`<span style="color:${k.col}">${k.name}</span>`).join("")}</div>
      <div class="prows">${rows}</div>
-     <div class="editor"><span class="label">Bed ${sel+1}</span>
+     <div class="editor"><span class="label">Plant ${sel+1}</span>
        ${KNOBS.map((k,j)=>`<label class="sl"><span>${k.name}</span><input type="range" id="k${j}" min="0" max="1" step="0.01" value="${c[j]}" ${busy?"disabled":""} style="accent-color:${k.col}"><b class="num" id="kv${j}">${fmtK(j,c[j])}</b><span class="u">${k.unit}</span></label>`).join("")}
      </div>
      ${G.beds>1?`<div class="rowbtns">
-       <button class="btn small" id="b-copy" ${busy?"disabled":""}>Copy bed ${sel+1} to all</button>
+       <button class="btn small" id="b-copy" ${busy?"disabled":""}>Copy plant ${sel+1} to all</button>
        <button class="btn small" id="b-rand" ${busy?"disabled":""}>Randomise all</button>
        <button class="btn small" id="b-best" ${busy||!G.data.length?"disabled":""}>Best + small changes</button></div>`:""}</section>
-   <section class="panel card"><h3>Who sets them? <span style="color:var(--magenta)">p</span></h3>
+   <section class="panel card"><h3>Who chooses the conditions? <span style="color:var(--magenta)">p</span></h3>
      <div class="planners">${plannerCards}</div></section>`;
   document.querySelectorAll("[data-pl]").forEach(b=>b.onclick=()=>setPlanner(b.dataset.pl));
   document.querySelectorAll("[data-row]").forEach(b=>b.onclick=()=>selectPlant(+b.dataset.row));
@@ -232,11 +232,11 @@ function openTitle(){
    <h2>Self-Driving Greenhouse</h2>
    <p>Build a greenhouse that runs experiments by itself, and use it to grow exceptional basil.</p>
    <div class="cols">
-     <button class="choice" id="r1"><h3>Round 1: Grow tall plants</h3><span class="what">Health = height. Choose more beds or a smarter planner, then run your lab for 49 days.</span><span class="note">About 10 minutes</span></button>
+     <button class="choice" id="r1"><h3>Round 1: Grow tall plants</h3><span class="what">Health = height. Choose more plants or a smarter planner, then run your lab for 49 days.</span><span class="note">About 10 minutes</span></button>
      <button class="choice" id="r2"><h3>Round 2: What is a healthy plant?</h3><span class="what">You decide what "healthy" means. Pick sensors to measure it. Buy a ready-made system or build your own from parts.</span><span class="note">About 15 minutes · best after Round 1</span></button>
    </div>
    <div class="row"><button class="btn" id="b-board">Class leaderboard</button>${typeof LIVE!=="undefined"&&LIVE?`<span class="small">Class: ${esc(LIVE.name)}</span>`:""}</div>`);
-  if($("#b-sayT"))$("#b-sayT").onclick=()=>speak("Self-driving greenhouse. Round 1: grow tall plants. Choose more beds or a smarter planner. Round 2: what is a healthy plant? You decide what healthy means, pick sensors, and buy a ready-made system or build your own from parts.");
+  if($("#b-sayT"))$("#b-sayT").onclick=()=>speak("Self-driving greenhouse. Round 1: grow tall plants. Choose more plants or a smarter planner. Round 2: what is a healthy plant? You decide what healthy means, pick sensors, and buy a ready-made system or build your own from parts.");
   $("#r1").onclick=()=>openBuild(localGet("sdl-team")||"");
   $("#r2").onclick=()=>openDefine(localGet("sdl-team")||"");
   $("#b-board").onclick=()=>openBoard("title");
@@ -254,7 +254,7 @@ const INFO={
     "Self-driving labs use it to find new materials and medicines with fewer experiments."]}),
   twin:()=>({t:"What is a digital twin?",x:[
     "A digital twin is a <b>computer model</b> of something real. Here, it is a model of how basil grows.",
-    "The planner tests thousands of ideas on the twin first. Then it uses your real beds only for the best ideas.",
+    "The planner tests thousands of ideas on the twin first. Then it grows real plants only for the best ideas.",
     "So it can make good picks from the very first batch, before you have any results.",
     "A twin is never perfect. Bayesian optimisation compares it with your real plants and corrects it.",
     `<b>Rough twin</b> (${eur(PLANNER.rough.price)}): quick and cheap, but only roughly right. Thinks ${PLANNER.rough.days} days before each batch.`,
@@ -281,9 +281,9 @@ function openBuild(team){
        <li>Then you use your greenhouse for <b>${SEASON_DAYS} days</b>. Grow as many exceptional plants as you can.</li></ul></div>
      <div class="howbox">
        <h3>First, build your greenhouse</h3>
-       <p>Now you spend your money. You can buy <b>equipment</b> (more beds) and <b>algorithms</b> (smart planners). Two numbers decide how many exceptional plants you find:</p>
+       <p>Now you spend your money. You can buy <b>equipment</b> (room for more plants) and <b>algorithms</b> (smart planners). Two numbers decide how many exceptional plants you find:</p>
        <div class="np">
-         <span class="k" style="color:var(--amber)">N</span><p><b>How many plants you grow at once.</b> Each bed holds 1 plant. More beds give a bigger N.</p>
+         <span class="k" style="color:var(--amber)">N</span><p><b>How many plants you grow at once.</b> Buy room for more plants to make N bigger.</p>
          <span class="k" style="color:var(--magenta)">p</span><p><b>The chance that one plant is exceptional.</b> A planner is an algorithm that picks the water, light, fertiliser and temperature. With random picks, p is only about ${(P_RANDOM*100).toFixed(1)}&nbsp;%. A smart planner learns from your plants and makes p bigger.</p>
        </div>
        <p>A big N and a big p both help. Your money cannot buy everything, so choose your mix.</p>
@@ -291,9 +291,9 @@ function openBuild(team){
      </div>
      <div class="buildgrid">
        <section class="bcol"><h3 style="color:var(--amber)">More plants (N)</h3>
-         <p class="small">1 bed grows 1 plant every ${GROW_DAYS} days. Your first bed is free.</p>
-         <div class="stepper"><button class="btn" id="b-minus" ${G.beds<=BEDS_START?"disabled":""} aria-label="One bed fewer">−</button><span class="num bigbeds">${G.beds}</span><span>bed${G.beds>1?"s":""}</span><button class="btn" id="b-plus" ${G.beds>=BEDS_MAX||G.money<BEDS_PRICE?"disabled":""} aria-label="One bed more">+</button></div>
-         <p class="small">Each extra bed: ${eur(BEDS_PRICE)}</p></section>
+         <p class="small">Each plant grows for ${GROW_DAYS} days. Then a new one starts. Your first plant is free.</p>
+         <div class="stepper"><button class="btn" id="b-minus" ${G.beds<=BEDS_START?"disabled":""} aria-label="One plant fewer">−</button><span class="num bigbeds">${G.beds}</span><span>plant${G.beds>1?"s":""} at once</span><button class="btn" id="b-plus" ${G.beds>=BEDS_MAX||G.money<BEDS_PRICE?"disabled":""} aria-label="One plant more">+</button></div>
+         <p class="small">Each extra plant: ${eur(BEDS_PRICE)}. It gets its own pot, lamp and pump.</p></section>
        <section class="bcol"><h3 style="color:var(--magenta)">Smarter planning (p)</h3>
          <p class="small">A planner picks the growing conditions. "You decide" and "Random" are free. Smart planners cost money, and some need extra days to think.</p>
          <div class="inforow">${infoBtn("bo","What is Bayesian optimisation?")}${infoBtn("twin","What is a digital twin?")}</div>
@@ -304,7 +304,7 @@ function openBuild(team){
      <div class="row"><label class="label" for="team">Team name</label><input id="team" type="text" maxlength="24" placeholder="e.g. Basil Instinct" value="${esc(G.team)}"></div>
      <div class="row"><button class="btn primary big" id="b-build">Build it and start using it ▶</button><button class="btn" id="b-board">Class leaderboard</button></div>`);
     overlay.scrollTop=keepScroll;
-    if($("#b-say"))$("#b-say").onclick=()=>speak(`You won ${START_MONEY} dollars to build a self-driving greenhouse. Your goal: grow healthy basil plants. We measure health as height. A plant of ${GOLD} centimetres or more is exceptional. Then you use your greenhouse for ${SEASON_DAYS} days. Grow as many exceptional plants as you can. First, build your greenhouse. You can buy equipment and algorithms. Two numbers decide how many exceptional plants you find. N is how many plants you grow at once. More beds, for ${BEDS_PRICE} dollars each, give a bigger N. p is the chance that one plant is exceptional. A smart planner picks better growing conditions and makes p bigger. Smart planners cost money, and some need extra days to think. Spend the money now. You cannot buy more later. You have ${G.money} dollars left.`);
+    if($("#b-say"))$("#b-say").onclick=()=>speak(`You won ${START_MONEY} dollars to build a self-driving greenhouse. Your goal: grow healthy basil plants. We measure health as height. A plant of ${GOLD} centimetres or more is exceptional. Then you use your greenhouse for ${SEASON_DAYS} days. Grow as many exceptional plants as you can. First, build your greenhouse. You can buy equipment and algorithms. Two numbers decide how many exceptional plants you find. N is how many plants you grow at once. Each extra plant costs ${BEDS_PRICE} dollars and makes N bigger. p is the chance that one plant is exceptional. A smart planner picks better growing conditions and makes p bigger. Smart planners cost money, and some need extra days to think. Spend the money now. You cannot buy more later. You have ${G.money} dollars left.`);
     if($("#b-say-info"))$("#b-say-info").onclick=()=>speak(I.t+" "+I.x.join(" "));
     document.querySelectorAll("[data-info]").forEach(b=>b.onclick=()=>{keepTeam();info=info===b.dataset.info?null:b.dataset.info;render()});
     if($("#b-info-close"))$("#b-info-close").onclick=()=>{keepTeam();info=null;render()};
@@ -376,7 +376,7 @@ function finishSeason(){
    <h3>Your lab on the curve from the paper</h3>
    <p>Chance of having found an exceptional plant by day t, <span class="num" style="color:var(--gold)">P = 1 − (1 − p)<sup>N·t</sup></span>, with your N and p.</p>
    <canvas class="wide" id="curves"></canvas>
-   <div class="legend"><span style="--c:#3a9a3a">1 bed, random</span><span style="--c:#6ab0de">Your beds, random</span><span style="--c:#2a3fa8">1 bed, your planning</span><span style="--c:#ef4a52">Your lab</span></div>
+   <div class="legend"><span style="--c:#3a9a3a">1 plant, random</span><span style="--c:#6ab0de">Your N, random</span><span style="--c:#2a3fa8">1 plant, your planning</span><span style="--c:#ef4a52">Your lab</span></div>
    <h3>Where the tall plants were</h3>
    <p class="small">Tallest plant possible for each water and light. Gold: exceptional is possible here. Dots: your plants.</p>
    <canvas class="wide" id="land" style="height:280px"></canvas>
@@ -387,7 +387,7 @@ function finishSeason(){
    <p>Is height really the best measure of a healthy plant? In Round 2 you decide what healthy means, pick sensors, and choose a ready-made or a modular lab.</p>
    <div class="row"><button class="btn primary big" id="b-r2">Go to Round 2 ▶</button><button class="btn" id="b-again">Play Round 1 again</button><button class="btn" id="b-board">Open leaderboard</button><button class="btn" id="b-home">Start screen</button></div>`);
   drawSeasonCurves($("#curves"));drawLandscape($("#land"));
-  if($("#b-say3"))$("#b-say3").onclick=()=>speak(`Season over. You grew ${s.plants} plants. ${s.gold} were exceptional. ${G.firstGold==null?"None reached 40 centimetres.":`The first one came on day ${G.firstGold}.`} The curve shows your chance of finding an exceptional plant over time. More beds raise N. A smarter planner raises p. The map shows where tall plants were possible, and where your plants were.`);
+  if($("#b-say3"))$("#b-say3").onclick=()=>speak(`Season over. You grew ${s.plants} plants. ${s.gold} were exceptional. ${G.firstGold==null?"None reached 40 centimetres.":`The first one came on day ${G.firstGold}.`} The curve shows your chance of finding an exceptional plant over time. More plants at once raise N. A smarter planner raises p. The map shows where tall plants were possible, and where your plants were.`);
   $("#b-again").onclick=()=>openBuild(G.team);
   $("#b-r2").onclick=$("#b-r2top").onclick=()=>openDefine(G.team);
   $("#b-home").onclick=openTitle;
