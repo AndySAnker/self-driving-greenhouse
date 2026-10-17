@@ -25,7 +25,7 @@ function decodeResult(code){
 /* Round 2 codes are 13 characters: they carry the health-score definition, the system and the sensors */
 const R2_SENS=["ruler","scale","camera","lab","hyper"],R2_PL=["evo","bo","rough","twin"];   // "evo" (Tweak the best) was removed; its bit stays so old codes decode
 function encodeResult2(){
-  const golds=G.data.filter(d=>d.y!=null&&d.y>=G.thr);const real=golds.filter(d=>d.ts>=G.thr).length;
+  const golds=G.data.filter(d=>d.y!=null&&d.y>=G.thr);const real=golds.filter(d=>d.ts>=G.thr).length;   // still encoded so the code format stays the same; no longer shown
   const b=best();const stars=b?expertStars(b.real):0;
   const wbits=PK2.reduce((a,k,i)=>a|((G.weights[k]||0)<<(2*i)),0);
   const smask=R2_SENS.reduce((a,id,i)=>a|(G.sensors[id]?1<<i:0),0);
@@ -110,7 +110,7 @@ function allEntries(){
   const map=new Map();for(const e of localRuns())map.set(e._id,e);for(const e of dbRuns)map.set(e._id,e);for(const [k,e] of liveRuns)map.set(k,e);
   if(ROOM){try{for(const p of ROOM.peers()){const r=p.presence&&p.presence.result;if(r&&r.id&&!map.has(r.id)){const e=entryFromCode(r.code,p.presence.team,r.id);if(e)map.set(r.id,e)}}}catch(e){}}
   const cut=clearedAt();const all=[...map.values()].filter(e=>!cut||(e.at||0)>cut);
-  if(boardRound===2)return all.filter(e=>e.round===2).sort((a,b)=>b.real-a.real||b.stars-a.stars||b.gold-a.gold);
+  if(boardRound===2)return all.filter(e=>e.round===2).sort((a,b)=>b.gold-a.gold||b.stars-a.stars);
   return all.filter(e=>(e.round||1)===1&&e.spent<=START_MONEY).sort((a,b)=>b.gold-a.gold||((a.first??99)-(b.first??99)));
 }
 function openBoard(from){boardFrom=from;liveConnect();if(G&&G.round===2)boardRound=2;else if(G)boardRound=1;renderBoard()}
@@ -122,9 +122,9 @@ function renderBoard(){
    <div class="row"><button class="btn small ${boardRound===1?"primary":""}" data-br="1">Round 1</button><button class="btn small ${boardRound===2?"primary":""}" data-br="2">Round 2</button></div>
    ${boardRound===1?`<div class="tw"><table class="t"><thead><tr><th>#</th><th>Team</th><th style="text-align:right">Exceptional</th><th style="text-align:right">First on day</th><th style="text-align:right">Plants at once (N)</th><th>Planners bought</th><th style="text-align:right">Plants grown</th><th style="text-align:right">Spent</th><th style="text-align:right">Tallest</th></tr></thead>
    <tbody>${rows.length?rows.map((e,i)=>`<tr><td class="n">${i+1}</td><td>${esc(e.team)}</td><td class="n" style="color:var(--gold)">${e.gold}</td><td class="n">${e.first==null?"–":e.first}</td><td class="n">${e.beds}</td><td>${e.planners.length?e.planners.map(id=>`<span class="chip" style="--c:${PLANNER[id].col}">${PLANNER[id].name}</span>`).join(" "):`<span class="small">none</span>`}</td><td class="n">${e.plants}</td><td class="n">${eur(e.spent)}</td><td class="n">${e.best} cm</td></tr>`).join(""):`<tr><td colspan="9" class="small">No results yet. Teams appear when they finish a season.</td></tr>`}</tbody></table></div>`:
-   `<p class="small">Ranked by plants that were really exceptional, then by the plant expert's stars.</p>
-   <div class="tw"><table class="t"><thead><tr><th>#</th><th>Team</th><th>Their health score</th><th style="text-align:right">Exceptional</th><th style="text-align:right">Really</th><th>Expert</th><th>System</th><th>Sensors</th><th style="text-align:right">Spent</th></tr></thead>
-   <tbody>${rows.length?rows.map((e,i)=>`<tr><td class="n">${i+1}</td><td>${esc(e.team)}</td><td class="small" style="color:var(--ink)">${wShort(e.weights)}</td><td class="n" style="color:var(--gold)">${e.gold}</td><td class="n" style="color:var(--leaf)">${e.real}</td><td style="color:var(--gold)">${"★".repeat(e.stars)}</td><td>${e.system==="turnkey"?"GrowBox":"Modular"} · ${e.beds} beds</td><td class="small" style="color:var(--ink)">${e.sensors.map(id=>SENS2M[id].name).join(", ")}</td><td class="n">${eur(e.spent)}</td></tr>`).join(""):`<tr><td colspan="9" class="small">No Round 2 results yet.</td></tr>`}</tbody></table></div>`}
+   `<p class="small">Ranked by exceptional plants, then by the plant expert's stars.</p>
+   <div class="tw"><table class="t"><thead><tr><th>#</th><th>Team</th><th>Their health score</th><th style="text-align:right">Exceptional</th><th>Expert</th><th>System</th><th>Sensors</th><th style="text-align:right">Spent</th></tr></thead>
+   <tbody>${rows.length?rows.map((e,i)=>`<tr><td class="n">${i+1}</td><td>${esc(e.team)}</td><td class="small" style="color:var(--ink)">${wShort(e.weights)}</td><td class="n" style="color:var(--gold)">${e.gold}</td><td style="color:var(--gold)">${"★".repeat(e.stars)}</td><td>${e.system==="turnkey"?"GrowBox":"Modular"} · ${e.beds} beds</td><td class="small" style="color:var(--ink)">${e.sensors.map(id=>SENS2M[id].name).join(", ")}</td><td class="n">${eur(e.spent)}</td></tr>`).join(""):`<tr><td colspan="8" class="small">No Round 2 results yet.</td></tr>`}</tbody></table></div>`}
    <h3>Add a result code</h3>
    <form id="codeform" class="row"><input id="c-team" type="text" placeholder="Team name" maxlength="24" style="max-width:200px"><input id="c-code" type="text" placeholder="Result code" maxlength="18" style="max-width:200px"><button class="btn primary" type="submit">Add</button><span class="small" id="c-msg"></span></form>
    ${rows.length?`<div class="row"><button class="btn small" id="b-clear">Clear this board…</button><span id="clear-confirm"></span></div>`:""}`);

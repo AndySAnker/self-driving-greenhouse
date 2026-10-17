@@ -48,6 +48,7 @@ function tourSteps(){
 /* Round 2: players know the greenhouse from Round 1, so only show what is new */
 function tourStepsR2(){
   const lab=!!(G.sensors&&G.sensors.lab&&G.weights&&G.weights.vitc);
+  const vitc=r2VitcPaid();
   const mod=G.system!=="turnkey";
   const s=[
     {t:"Round 2: what is new",
@@ -55,7 +56,7 @@ function tourStepsR2(){
     {sel:"#top .cell:nth-child(4)",t:"Your health score",
      x:"Plants are no longer judged by height alone. This is <b>your</b> definition of a healthy plant. The planners try to make this score high."},
     {sel:"#top .cell:nth-child(3)",t:"Your money",
-     x:lab?`This is the money you have left. Lab tests for vitamin C are paid from it at the start of every batch. If you run out, vitamin C is not measured.`
+     x:vitc?`This is the money you have left. Vitamin C tests are paid from it at the start of every batch. If you run out, vitamin C is not measured.`
           :mod?"This is the money you have left. If your funder gives you more on day 21, you can spend it on upgrades then.":"This is the money you have left. The GrowBox is closed, so there is nothing more to buy."},
     {sel:"#right .card:first-child",t:"Score, not height",
      x:`The dots now show each plant’s health score. Gold dots are exceptional: a score of <b>${G.thrR}</b> or more.<br>${G.own.rough||G.own.twin?"Your digital twin also adds <b>hollow circles</b>. These are simulated plants: the twin's prediction, not real plants. Compare them with the real dots to see how good the twin is.":"Teams with a digital twin also see <b>hollow circles</b>. These are simulated plants: the twin's prediction, not real plants."}`},
