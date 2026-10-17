@@ -1420,7 +1420,7 @@ function tourStepsR2(){
     {sel:"#top .cell:nth-child(3)",t:"Your health score",
      x:"Plants are no longer judged by height alone. This is <b>your</b> definition of a healthy plant. The planners try to make this score high."},
     {sel:"#right .card:first-child",t:"Score, not height",
-     x:`The dots now show each plant’s health score. Gold dots are exceptional: a score of <b>${G.thrR}</b> or more.`},
+     x:`The dots now show each plant’s health score. Gold dots are exceptional: a score of <b>${G.thrR}</b> or more.<br>${G.own.rough||G.own.twin?"Your digital twin also adds <b>hollow circles</b>. These are simulated plants: the twin's prediction, not real plants. Compare them with the real dots to see how good the twin is.":"Teams with a digital twin also see <b>hollow circles</b>. These are simulated plants: the twin's prediction, not real plants."}`},
     {sel:"#right .card:nth-child(2)",t:"What your sensors saw",
      x:"After a batch, click a plant to see what your sensors measured. Sensors can be noisy. <b>Not measured</b> means your planner cannot see that property at all."},
     {sel:"#top .cell:nth-child(2)",t:mod?"Your modular lab":"Your GrowBox",
