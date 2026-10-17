@@ -115,7 +115,7 @@ function renderTop(){
   if(G.round===2)return r2RenderTop();
   const gold=G.data.filter(d=>d.y>=GOLD).length;
   $("#top").innerHTML=`
-   <div class="panel cell"><span class="label">Phase 2: Run · ${SEASON_DAYS} days</span><span class="big">Day <span id="dayval">${G.day}</span><span style="font-size:13px;color:var(--muted)"> / ${SEASON_DAYS}</span></span><div id="daybar"><i></i></div></div>
+   <div class="panel cell"><span class="label">Use the self-driving greenhouse</span><span class="big">Day <span id="dayval">${G.day}</span><span style="font-size:13px;color:var(--muted)"> / ${SEASON_DAYS}</span></span><div id="daybar"><i></i></div></div>
    <div class="panel cell"><span class="label">${esc(G.team)}'s lab</span><span class="big" style="font-size:16px"><span style="color:var(--amber)">${G.beds} bed${G.beds>1?"s":""}</span> · <span style="color:var(--magenta)">${ownedPlanners().filter(p=>p.price>0).map(p=>p.name).join(", ")||"no planner bought"}</span></span></div>
    <div class="panel cell"><span class="label">Exceptional plants</span><span class="big" style="color:var(--gold)">${gold}</span></div>
    <div id="ctrls" class="panel"><button class="btn small" id="b-tour">How to play</button>${sayBtn("b-say2")}<button class="btn small" id="b-fast" title="Animation speed">${G.fast?"Speed: fast":"Speed: normal"}</button><button class="btn small" id="b-finish">Finish</button></div>`;
@@ -241,22 +241,54 @@ function openTitle(){
   $("#r2").onclick=()=>openDefine(localGet("sdl-team")||"");
   $("#b-board").onclick=()=>openBoard("title");
 }
-/* Phase 1: spend the grant. Phase 2: run the campaign with what you built. */
+/* "More info" panels on the build screen */
+const INFO={
+  bo:()=>({t:"What is Bayesian optimisation?",x:[
+    "It is a smart way to search when each test is slow or costly. Here, each test is a plant that takes a week to grow.",
+    "After each batch, it makes a <b>best guess</b>: how tall will a plant grow with these conditions?",
+    "It also knows <b>where its guess is unsure</b>, because it has not tried those conditions yet.",
+    "Then it picks the next conditions. Some are where it expects tall plants. Some are where it is unsure, so it can learn more.",
+    "Every new plant makes the guess better. So p goes up during the season.",
+    "At the start it knows nothing. So its first picks are random.",
+    `It thinks for ${PLANNER.bo.days} day${PLANNER.bo.days>1?"s":""} before each batch.`,
+    "Self-driving labs use it to find new materials and medicines with fewer experiments."]}),
+  twin:()=>({t:"What is a digital twin?",x:[
+    "A digital twin is a <b>computer model</b> of something real. Here, it is a model of how basil grows.",
+    "The planner tests thousands of ideas on the twin first. Then it uses your real beds only for the best ideas.",
+    "So it can make good picks from the very first batch, before you have any results.",
+    "A twin is never perfect. Bayesian optimisation compares it with your real plants and corrects it.",
+    `<b>Rough twin</b> (${eur(PLANNER.rough.price)}): quick and cheap, but only roughly right. Thinks ${PLANNER.rough.days} days before each batch.`,
+    `<b>Detailed twin</b> (${eur(PLANNER.twin.price)}): much closer to real plants, but costs more. Thinks ${PLANNER.twin.days} days before each batch.`,
+    "Thinking days use up your season. Fewer batches means fewer plants in total."]}),
+};
+/* First "Build a self-driving greenhouse" (spend the grant), then "Use the self-driving greenhouse" (run the campaign). */
 function openBuild(team){
   newGame(team);PCTX=null;syncEquipment();frameView();ui();
   const extras=PLANNERS.filter(p=>p.price>0);
+  let info=null;   // which info panel is open: "bo", "twin" or null
+  const infoBtn=(id,label)=>`<button class="btn small info" data-info="${id}" aria-expanded="${info===id}"><span class="i" aria-hidden="true">i</span>${label}</button>`;
   const render=()=>{
     const spent=(G.beds-BEDS_START)*BEDS_PRICE+extras.reduce((a,p)=>a+(G.own[p.id]?p.price:0),0);
     G.money=START_MONEY-spent;G.spent=spent;
     const keepScroll=overlay.hidden?0:overlay.scrollTop;
-    openOverlay(`<div class="row" style="justify-content:space-between"><div class="eyebrow"><span class="label" style="color:var(--leaf)">Phase 1 of 2: Build</span><span class="label">Phase 2: Run</span></div>${sayBtn("b-say")}</div>
+    const I=info&&INFO[info]();
+    openOverlay(`<div class="row" style="justify-content:space-between"><div class="eyebrow"><span class="label" style="color:var(--leaf)">Phase: Build a self-driving greenhouse</span><span class="label">Next: Use the self-driving greenhouse</span></div>${sayBtn("b-say")}</div>
      <h2>You won ${eur(START_MONEY)} to build a self-driving greenhouse!</h2>
      <div class="goalbox"><ul class="goal">
        <li><b>Your goal:</b> grow healthy basil plants.</li>
        <li>We measure health as <b>height</b>.</li>
        <li>A plant of <b style="color:var(--gold)">${GOLD} cm or more</b> is <b style="color:var(--gold)">exceptional</b>.</li>
-       <li>In phase 2 you have <b>${SEASON_DAYS} days</b>. Grow as many exceptional plants as you can.</li></ul></div>
-     <p><b>Spend the money now.</b> You cannot buy more later.</p>
+       <li>Then you use your greenhouse for <b>${SEASON_DAYS} days</b>. Grow as many exceptional plants as you can.</li></ul></div>
+     <div class="howbox">
+       <h3>First, build your greenhouse</h3>
+       <p>Now you spend your money. You can buy <b>equipment</b> (more beds) and <b>algorithms</b> (smart planners). Two numbers decide how many exceptional plants you find:</p>
+       <div class="np">
+         <span class="k" style="color:var(--amber)">N</span><p><b>How many plants you grow at once.</b> Each bed holds 1 plant. More beds give a bigger N.</p>
+         <span class="k" style="color:var(--magenta)">p</span><p><b>The chance that one plant is exceptional.</b> A planner is an algorithm that picks the water, light, fertiliser and temperature. With random picks, p is only about ${(P_RANDOM*100).toFixed(1)}&nbsp;%. A smart planner learns from your plants and makes p bigger.</p>
+       </div>
+       <p>A big N and a big p both help. Your money cannot buy everything, so choose your mix.</p>
+       <p><b>Spend the money now.</b> You cannot buy more later.</p>
+     </div>
      <div class="buildgrid">
        <section class="bcol"><h3 style="color:var(--amber)">More plants (N)</h3>
          <p class="small">1 bed grows 1 plant every ${GROW_DAYS} days. Your first bed is free.</p>
@@ -264,13 +296,18 @@ function openBuild(team){
          <p class="small">Each extra bed: ${eur(BEDS_PRICE)}</p></section>
        <section class="bcol"><h3 style="color:var(--magenta)">Smarter planning (p)</h3>
          <p class="small">A planner picks the growing conditions. "You decide" and "Random" are free. Smart planners cost money, and some need extra days to think.</p>
+         <div class="inforow">${infoBtn("bo","What is Bayesian optimisation?")}${infoBtn("twin","What is a digital twin?")}</div>
+         ${I?`<div class="infobox" role="region" aria-label="${I.t}"><div class="row" style="justify-content:space-between"><h3>${I.t}</h3><span class="row">${sayBtn("b-say-info")}<button class="btn small" id="b-info-close">Close</button></span></div><ul>${I.x.map(s=>`<li>${s}</li>`).join("")}</ul></div>`:""}
          <div class="buylist">${extras.map(p=>{const on=!!G.own[p.id];const can=on||G.money>=p.price;return `<button class="choice ${on?"on":""}" data-buy="${p.id}" ${can?"":"disabled"}><h3>${p.name}<span class="price">${eur(p.price)}</span></h3><span class="what">${p.what}</span><span class="note">${p.days?`Thinks ${p.days} day${p.days>1?"s":""} before each batch`:"No waiting"}</span></button>`}).join("")}</div></section>
      </div>
      <div class="total">Money left: ${eur(G.money)} of ${eur(START_MONEY)}</div>
      <div class="row"><label class="label" for="team">Team name</label><input id="team" type="text" maxlength="24" placeholder="e.g. Basil Instinct" value="${esc(G.team)}"></div>
-     <div class="row"><button class="btn primary big" id="b-build">Build it and start phase 2 ▶</button><button class="btn" id="b-board">Class leaderboard</button></div>`);
+     <div class="row"><button class="btn primary big" id="b-build">Build it and start using it ▶</button><button class="btn" id="b-board">Class leaderboard</button></div>`);
     overlay.scrollTop=keepScroll;
-    if($("#b-say"))$("#b-say").onclick=()=>speak(`You won ${START_MONEY} dollars to build a self-driving greenhouse. Your goal: grow healthy basil plants. We measure health as height. A plant of ${GOLD} centimetres or more is exceptional. In phase 2 you have ${SEASON_DAYS} days. Grow as many exceptional plants as you can. Spend the money now. You can buy more beds, for ${BEDS_PRICE} dollars each, so you grow more plants at once. Or you can buy a smarter planner, which picks better growing conditions. Smart planners cost money, and some need extra days to think. You have ${G.money} dollars left.`);
+    if($("#b-say"))$("#b-say").onclick=()=>speak(`You won ${START_MONEY} dollars to build a self-driving greenhouse. Your goal: grow healthy basil plants. We measure health as height. A plant of ${GOLD} centimetres or more is exceptional. Then you use your greenhouse for ${SEASON_DAYS} days. Grow as many exceptional plants as you can. First, build your greenhouse. You can buy equipment and algorithms. Two numbers decide how many exceptional plants you find. N is how many plants you grow at once. More beds, for ${BEDS_PRICE} dollars each, give a bigger N. p is the chance that one plant is exceptional. A smart planner picks better growing conditions and makes p bigger. Smart planners cost money, and some need extra days to think. Spend the money now. You cannot buy more later. You have ${G.money} dollars left.`);
+    if($("#b-say-info"))$("#b-say-info").onclick=()=>speak(I.t+" "+I.x.join(" "));
+    document.querySelectorAll("[data-info]").forEach(b=>b.onclick=()=>{keepTeam();info=info===b.dataset.info?null:b.dataset.info;render()});
+    if($("#b-info-close"))$("#b-info-close").onclick=()=>{keepTeam();info=null;render()};
     const keepTeam=()=>{G.team=$("#team").value};
     $("#b-minus").onclick=()=>{keepTeam();G.beds=Math.max(BEDS_START,G.beds-1);syncEquipment();frameView();render()};
     $("#b-plus").onclick=()=>{keepTeam();if(G.money>=BEDS_PRICE&&G.beds<BEDS_MAX){G.beds++;syncEquipment();frameView()}render()};
@@ -285,7 +322,7 @@ function startCampaign(){
   const smart=["twin","rough","bo","evo"].find(id=>G.own[id]);
   closeOverlay();syncEquipment();frameView();
   if(smart)setPlanner(smart);else{G.planner="you";G.planFrom="you"}
-  toast(`Phase 2: your greenhouse is built. ${SEASON_DAYS} days start now.`);
+  toast(`Your greenhouse is built. Now use it: ${SEASON_DAYS} days start now.`);
   ui();
 }
 

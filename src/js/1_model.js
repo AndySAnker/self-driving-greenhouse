@@ -55,9 +55,9 @@ const PLANNERS=[
   {id:"bo",name:"Bayesian optimisation",price:3000,days:1,col:"#d685ff",
    what:"Learns from all your plants and picks the most promising next try."},
   {id:"rough",name:"BO + rough twin",price:4000,days:2,col:"#9bb0ff",
-   what:"Like Bayesian optimisation, plus a quick computer model of plants. The model is only roughly right."},
+   what:"Like Bayesian optimisation, plus a quick digital twin: a computer model of plants. It is only roughly right."},
   {id:"twin",name:"BO + detailed twin",price:6000,days:4,col:"#5fd3e8",
-   what:"Like Bayesian optimisation, plus a detailed computer model of plants. Very good, but slow."},
+   what:"Like Bayesian optimisation, plus a detailed digital twin: a computer model of plants. Very good, but slow."},
 ];
 const PLANNER=Object.fromEntries(PLANNERS.map(p=>[p.id,p]));
 const randCond=()=>[rng(),rng(),rng(),rng()];

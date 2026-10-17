@@ -23,7 +23,7 @@ function stageRect(){   // the open part of the greenhouse view, between the sid
 function tourSteps(){
   if(G.round===2)return tourStepsR2();
   return [
-    {t:"Phase 2: Run your greenhouse",
+    {t:"Use your self-driving greenhouse",
      x:`Your lab is built. You have ${SEASON_DAYS} days to find exceptional plants.<br>This short tour shows what to click, one step at a time.`},
     {sel:"#top .cell:first-child",t:"Time",
      x:`The season has ${SEASON_DAYS} days. Each batch of plants grows for ${GROW_DAYS} days. Smart planners also need days to think.`},

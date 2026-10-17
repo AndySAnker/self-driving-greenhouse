@@ -193,6 +193,17 @@ ul.lessons{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px
 .buylist{display:flex;flex-direction:column;gap:6px}
 .buylist .choice{padding:9px 11px}
 .buylist .choice[disabled]{opacity:.45;cursor:not-allowed}
+.howbox{display:flex;flex-direction:column;gap:8px}
+.howbox h3{font-size:20px}
+.np{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 14px;align-items:start;background:var(--stone-2);border:2px solid var(--edge-lo);padding:10px 12px}
+.np .k{font-family:var(--f-data);font-size:28px;font-weight:700;line-height:1.1;min-width:1.4ch;text-align:center}
+.inforow{display:flex;gap:6px;flex-wrap:wrap}
+.btn.info{display:inline-flex;align-items:center;gap:6px}
+.btn.info .i{display:inline-grid;place-items:center;width:18px;height:18px;background:var(--cyan);color:#0b0f0d;font-weight:700;font-size:12px;font-family:var(--f-data)}
+.btn.info[aria-expanded="true"]{border-color:var(--cyan)}
+.infobox{background:var(--well);border:2px solid var(--cyan);padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.infobox h3{font-size:17px;color:var(--cyan)}
+.infobox ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px;font-size:15px;line-height:1.5}
 .formula{font-family:var(--f-data);font-size:14px;line-height:1.6;background:var(--well);border:1px solid var(--edge-hi);padding:10px 12px;color:var(--ink)}
 
 /* guided tour */
