@@ -1230,17 +1230,25 @@ function openBuild2(){
      <h2>You won ${eur(START_MONEY)} to build your lab</h2>
      <p>Health score = <b>${weightText(G.weights)}</b>. Exceptional = <b style="color:var(--gold)">${G.thrR} or more</b>.</p>
      <div class="row"><span class="label">Quick start:</span>${presets.map((p,i)=>`<button class="btn small" data-bp="${i}" title="${p.what}">${p.t}</button>`).join("")}</div>
-     <h3>1. Ready-made or build it yourself?</h3>
+     <h3>1. Buy a complete set, or build it yourself?</h3>
+     <p>There are two ways to get a self-driving lab:</p>
+     <ul class="goal">
+       <li><b>Buy a complete set.</b> One company sells everything together: room for plants, sensors, robot and software. It all works together from day 1. But you can only use what is in the box.</li>
+       <li><b>Build it yourself.</b> Start small and add parts one by one: more plants, other sensors, a smarter planner. You choose every part. But each new part takes time to set up, and home-made setups break more often.</li>
+     </ul>
+     <p>Real labs face the same choice: a closed system that just works, or an open one you can change.</p>
      <div class="cols">
-       <button class="choice ${G.system==="turnkey"?"on":""}" data-sys="turnkey"><h3>GrowBox Pro (ready-made)<span class="price">${eur(TURNKEY.price)}</span></h3>
+       <button class="choice ${G.system==="turnkey"?"on":""}" data-sys="turnkey"><h3>GrowBox Pro (complete set)<span class="price">${eur(TURNKEY.price)}</span></h3>
          <span class="what">Room for ${TURNKEY.beds} plants, a ruler, a scale and a colour camera. Planner "Tweak the best" built in.</span>
          <span class="note">Works on day 1. Never breaks. But it is closed: you cannot add other sensors or planners.</span></button>
        <button class="choice ${mod?"on":""}" data-sys="modular"><h3>Modular parts (build it yourself)<span class="price">from ${eur(MOD.basePrice)}</span></h3>
          <span class="what">A controller and room for 1 plant for ${eur(MOD.basePrice)}. Each extra plant ${eur(MOD.bedPrice)}. Add any sensors and planners.</span>
          <span class="note">Cheaper per plant and flexible. But setting up takes days, and parts sometimes break.</span></button>
      </div>
-     ${G.system==="turnkey"?`<h3>2. Plants at once (N)</h3><div class="stepper"><span class="num bigbeds">${G.beds}</span><span>plants, fixed</span></div><p class="small">The GrowBox holds ${TURNKEY.beds} plants. You cannot add more.</p>`:
-      `<h3>2. Plants at once (N)</h3><div class="stepper"><button class="btn" id="b-bm" ${G.beds<=1?"disabled":""} aria-label="One plant fewer">−</button><span class="num bigbeds">${G.beds}</span><span>plant${G.beds>1?"s":""}</span><button class="btn" id="b-bp" ${G.beds>=MOD.maxBeds||G.money<MOD.bedPrice?"disabled":""} aria-label="One plant more">+</button></div><p class="small">Each extra plant: ${eur(MOD.bedPrice)}</p>`}
+     <h3>2. Plants at once (N)</h3>
+     <p>N is how many plants grow side by side in each batch. A batch grows for ${GROW_DAYS} days. Then you see the results and start a new batch. More plants at once means more chances to find an exceptional plant in every batch.</p>
+     ${G.system==="turnkey"?`<div class="stepper"><span class="num bigbeds">${G.beds}</span><span>plants, fixed</span></div><p class="small">The GrowBox holds ${TURNKEY.beds} plants. You cannot add more.</p>`:
+      `<div class="stepper"><button class="btn" id="b-bm" ${G.beds<=1?"disabled":""} aria-label="One plant fewer">−</button><span class="num bigbeds">${G.beds}</span><span>plant${G.beds>1?"s":""}</span><button class="btn" id="b-bp" ${G.beds>=MOD.maxBeds||G.money<MOD.bedPrice?"disabled":""} aria-label="One plant more">+</button></div><p class="small">Each extra plant: ${eur(MOD.bedPrice)}</p>`}
      <h3>3. Sensors: what can you see?</h3>
      <div class="buylist">${sensorRows}</div>
      <div class="checks">${PROPS2.filter(p=>G.weights[p.k]).map(p=>meas[p.k]?`<span class="ok">✓ ${p.name}: measured by ${SENS2M[meas[p.k].by].name}</span>`:`<span class="bad">✗ ${p.name}: not measured. Your planner cannot see it!</span>`).join("")}</div>
@@ -1261,7 +1269,7 @@ function openBuild2(){
     if($("#b-bp"))$("#b-bp").onclick=()=>{keepTeam();G.beds++;syncEquipment();frameView();render()};
     document.querySelectorAll("[data-sen]").forEach(b=>b.onclick=()=>{keepTeam();const id=b.dataset.sen;if(id==="ruler")return;G.sensors[id]=G.sensors[id]?0:1;syncEquipment();render()});
     document.querySelectorAll("[data-pl2]").forEach(b=>b.onclick=()=>{keepTeam();const id=b.dataset.pl2;if(G.own[id])delete G.own[id];else G.own[id]=1;syncEquipment();render()});
-    if($("#b-sayB"))$("#b-sayB").onclick=()=>speak(`Build your lab. You have ${START_MONEY} dollars. First choose: a ready-made GrowBox, which works on day one but is closed, or modular parts, which are cheaper and flexible, but take days to set up and sometimes break. Then choose how many plants, sensors and a planner. Sensors decide what you can measure. If your health score needs something that no sensor measures, your planner cannot see it. You have ${G.money} dollars left, and setup takes ${setup} days.`);
+    if($("#b-sayB"))$("#b-sayB").onclick=()=>speak(`Build your lab. You have ${START_MONEY} dollars. First choose how to get your lab. You can buy a complete set, the GrowBox. One company sells everything together, and it works from day one. But you can only use what is in the box. Or you can build it yourself from modular parts. Start small and add parts one by one. You choose every part, and it is cheaper per plant. But each new part takes time to set up, and home-made setups break more often. Then choose how many plants grow at once in each batch. This is N. More plants at once means more chances to find an exceptional plant. Then choose sensors and a planner. Sensors decide what you can measure. If your health score needs something that no sensor measures, your planner cannot see it. You have ${G.money} dollars left, and setup takes ${setup} days.`);
     $("#b-back2").onclick=()=>{keepTeam();openDefine(G.team,G.weights)};
     $("#b-go2").onclick=()=>{keepTeam();if(G.money<0)return;const t=(G.team||"").trim()||"Team "+(100+Math.floor(rng()*900));localSet("sdl-team",t);G.team=t;r2Start()};
   };
