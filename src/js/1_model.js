@@ -50,8 +50,6 @@ const PLANNERS=[
    what:"You set the conditions yourself."},
   {id:"random",name:"Random",price:0,days:0,col:"#cfd6d9",
    what:"Random conditions. Learns nothing."},
-  {id:"evo",name:"Tweak the best",price:1000,days:0,col:"#7fd650",
-   what:"Copies your best plants and makes small changes."},
   {id:"bo",name:"Bayesian optimisation",price:3000,days:1,col:"#d685ff",
    what:"Learns from all your plants and picks the most promising next try."},
   {id:"rough",name:"BO + rough twin",price:4000,days:2,col:"#9bb0ff",
@@ -63,11 +61,6 @@ const PLANNER=Object.fromEntries(PLANNERS.map(p=>[p.id,p]));
 const randCond=()=>[rng(),rng(),rng(),rng()];
 const mutate=(c,s)=>c.map(x=>clamp(x+s*gauss(),0,1));
 function topData(data,k){return data.slice().sort((a,b)=>b.y-a.y).slice(0,k)}
-function planEvo(data,n){
-  if(data.length<3)return [...Array(n)].map(randCond);
-  const top=topData(data,3);
-  return [...Array(n)].map((_,i)=>mutate(top[i%top.length].c,i<n/2?.06:.13));
-}
 function chol(A,n){const L=new Float64Array(n*n);for(let i=0;i<n;i++)for(let j=0;j<=i;j++){let s=A[i*n+j];for(let k=0;k<j;k++)s-=L[i*n+k]*L[j*n+k];L[i*n+j]=i===j?Math.sqrt(Math.max(s,1e-10)):s/L[j*n+j]}return L}
 function twinPrior(c){ // a simulation with a systematic error: right shape, slightly wrong optimum
   const s=[c[0]+.06,c[1]-.05,c[2]+.07,c[3]-.04];return (heightOf(s)*0.95)/HMAX}
@@ -103,7 +96,6 @@ function planBO(data,n,twin){
 function plan(id,data,n){
   data=data.filter(d=>d.y!=null);   // plants whose score could not be measured teach the planner nothing
   if(id==="random")return [...Array(n)].map(randCond);
-  if(id==="evo")return planEvo(data,n);
   if(id==="bo")return planBO(data,n,false);
   if(id==="rough")return planBO(data,n,"rough");
   if(id==="twin")return planBO(data,n,"detailed");

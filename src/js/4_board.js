@@ -20,10 +20,10 @@ function decodeResult(code){
   let big=0n;for(const ch of s.slice(0,9))big=(big<<5n)|BigInt(B32.indexOf(ch));
   const sizes=[8,6,8,6,5,4,7];const v=[];
   for(let i=sizes.length-1;i>=0;i--){v[i]=Number(big&((1n<<BigInt(sizes[i]))-1n));big>>=BigInt(sizes[i])}
-  return {gold:v[0],first:v[1]===63?null:v[1],plants:v[2],spent:v[3]*1000,beds:v[4],planners:["evo","bo","twin","rough"].filter((_,i)=>v[5]&(1<<i)),best:v[6]};
+  return {gold:v[0],first:v[1]===63?null:v[1],plants:v[2],spent:v[3]*1000,beds:v[4],planners:["evo","bo","twin","rough"].filter((id,i)=>v[5]&(1<<i)&&PLANNER[id]),best:v[6]};
 }
 /* Round 2 codes are 13 characters: they carry the health-score definition, the system and the sensors */
-const R2_SENS=["ruler","scale","camera","lab","hyper"],R2_PL=["evo","bo","rough","twin"];
+const R2_SENS=["ruler","scale","camera","lab","hyper"],R2_PL=["evo","bo","rough","twin"];   // "evo" (Tweak the best) was removed; its bit stays so old codes decode
 function encodeResult2(){
   const golds=G.data.filter(d=>d.y!=null&&d.y>=G.thr);const real=golds.filter(d=>d.ts>=G.thr).length;
   const b=best();const stars=b?expertStars(b.real):0;
@@ -46,7 +46,7 @@ function decodeResult2(code){
   for(let i=sizes.length-1;i>=0;i--){v[i]=Number(big&((1n<<BigInt(sizes[i]))-1n));big>>=BigInt(sizes[i])}
   const weights={};PK2.forEach((k,i)=>weights[k]=(v[6]>>(2*i))&3);
   return {round:2,gold:v[0],real:v[1],plants:v[2],spent:v[3]*1000,beds:v[4],system:v[5]?"turnkey":"modular",weights,
-    sensors:R2_SENS.filter((_,i)=>v[7]&(1<<i)),planners:R2_PL.filter((_,i)=>v[8]&(1<<i)),stars:v[9]};
+    sensors:R2_SENS.filter((_,i)=>v[7]&(1<<i)),planners:R2_PL.filter((id,i)=>v[8]&(1<<i)&&PLANNER[id]),stars:v[9]};
 }
 const decodeAny=code=>decodeResult(code)||decodeResult2(code);
 let boardRound=1;

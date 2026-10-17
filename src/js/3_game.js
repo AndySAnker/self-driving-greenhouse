@@ -319,7 +319,7 @@ function openBuild(team){
 }
 function startCampaign(){
   G.phase="plan";
-  const smart=["twin","rough","bo","evo"].find(id=>G.own[id]);
+  const smart=["twin","rough","bo"].find(id=>G.own[id]);
   closeOverlay();syncEquipment();frameView();
   if(smart)setPlanner(smart);else{G.planner="you";G.planFrom="you"}
   toast(`Your greenhouse is built. Now use it: ${SEASON_DAYS} days start now.`);

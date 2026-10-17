@@ -47,7 +47,7 @@ const SENS2=[
   {id:"hyper",name:"Hyperspectral camera",price:8000,setup:2,m:{green:.02,vitc:.05,yield:.04},what:"Measures leaf colour, vitamin C and harvest. Expensive."},
 ];
 const SENS2M=Object.fromEntries(SENS2.map(s=>[s.id,s]));
-const TURNKEY={price:10000,beds:8,packPrice:3000,pack:4,maxPacks:0,sensors:["ruler","scale","camera"],planners:["evo"]};
+const TURNKEY={price:10000,beds:8,packPrice:3000,pack:4,maxPacks:0,sensors:["ruler","scale","camera"],planners:[]};
 const MOD={basePrice:1000,bedPrice:500,maxBeds:24,breakChance:.14};
 
 function r2New(team){
@@ -188,12 +188,12 @@ function openDefine(team,keepW){
 /* ---------- Step 2: build ---------- */
 function openBuild2(){
   const presets=[
-    {t:"Plug and play",what:"GrowBox Pro: 8 plants, ready on day 1",f:()=>{G.system="turnkey";G.packs=0;G.beds=TURNKEY.beds;G.own={you:1,random:1,evo:1};G.sensors=Object.fromEntries(TURNKEY.sensors.map(s=>[s,1]))}},
-    {t:"Cheap and DIY",what:"Modular: 12 plants, simple sensors",f:()=>{G.system="modular";G.beds=12;G.own={you:1,random:1,evo:1};G.sensors={ruler:1,scale:1,lab:1}}},
+    {t:"Plug and play",what:"GrowBox Pro: 8 plants, ready on day 1",f:()=>{G.system="turnkey";G.packs=0;G.beds=TURNKEY.beds;G.own={you:1,random:1};G.sensors=Object.fromEntries(TURNKEY.sensors.map(s=>[s,1]))}},
+    {t:"Cheap and DIY",what:"Modular: 12 plants, simple sensors",f:()=>{G.system="modular";G.beds=12;G.own={you:1,random:1};G.sensors={ruler:1,scale:1,lab:1}}},
     {t:"Smart software",what:"Modular: 6 plants, Bayesian optimisation, good sensors",f:()=>{G.system="modular";G.beds=6;G.own={you:1,random:1,bo:1};G.sensors={ruler:1,scale:1,camera:1,lab:1}}},
   ];
   const render=()=>{
-    if(G.system==="turnkey"){G.packs=0;G.beds=TURNKEY.beds;G.sensors=Object.fromEntries(TURNKEY.sensors.map(s=>[s,1]));G.own={you:1,random:1,evo:1}}
+    if(G.system==="turnkey"){G.packs=0;G.beds=TURNKEY.beds;G.sensors=Object.fromEntries(TURNKEY.sensors.map(s=>[s,1]));G.own={you:1,random:1}}
     const spent=r2Spent();G.money=START_MONEY-spent;G.spent=spent;
     const meas=r2Measured();const setup=r2SetupDays();
     const keep=overlay.hidden?0:overlay.scrollTop;
@@ -202,7 +202,7 @@ function openBuild2(){
     const sensorRows=SENS2.map(s=>{const on=!!G.sensors[s.id];const can=on||G.money>=s.price||!mod;
       return `<button class="choice ${on?"on":""}" data-sen="${s.id}" ${(!mod||(!can))?"disabled":""}><h3>${s.name}<span class="price">${s.perPlant?`${eur(s.perPlant)}/plant`:s.price?eur(s.price):"free"}</span></h3><span class="what">${s.what}</span><span class="note">Measures: ${Object.keys(s.m).map(k=>PROPS2.find(p=>p.k===k).name).join(", ")}${s.setup?` · ${s.setup} setup day${s.setup>1?"s":""}`:""}</span></button>`}).join("");
     const plannerRows=PLANNERS.filter(p=>p.price).map(p=>{const on=!!G.own[p.id];const can=on||G.money>=p.price;
-      return `<button class="choice ${on?"on":""}" data-pl2="${p.id}" ${(!mod||!can)?"disabled":""}><h3>${p.name}<span class="price">${!mod&&p.id==="evo"?"built in":eur(p.price)}</span></h3><span class="what">${p.what}</span><span class="note">${p.days?`Thinks ${p.days} day${p.days>1?"s":""} before each batch`:"No waiting"}${mod?" · 1 setup day":""}</span></button>`}).join("");
+      return `<button class="choice ${on?"on":""}" data-pl2="${p.id}" ${(!mod||!can)?"disabled":""}><h3>${p.name}<span class="price">${eur(p.price)}</span></h3><span class="what">${p.what}</span><span class="note">${p.days?`Thinks ${p.days} day${p.days>1?"s":""} before each batch`:"No waiting"}${mod?" · 1 setup day":""}</span></button>`}).join("");
     openOverlay(`<div class="row" style="justify-content:space-between"><div class="eyebrow"><span class="label">Step 1: Define</span><span class="label" style="color:var(--leaf)">Step 2 of 3: Build</span><span class="label">Step 3: Run</span></div>${sayBtn("b-sayB")}</div>
      <h2>You won ${eur(START_MONEY)} to build your lab</h2>
      <p>Health score = <b>${weightText(G.weights)}</b>. Exceptional = <b style="color:var(--gold)">${G.thrR} or more</b>.</p>
@@ -216,7 +216,7 @@ function openBuild2(){
      <p>Real labs face the same choice: a closed system that just works, or an open one you can change.</p>
      <div class="cols">
        <button class="choice ${G.system==="turnkey"?"on":""}" data-sys="turnkey"><h3>GrowBox Pro (complete set)<span class="price">${eur(TURNKEY.price)}</span></h3>
-         <span class="what">Room for ${TURNKEY.beds} plants, a ruler, a scale and a colour camera. Planner "Tweak the best" built in.</span>
+         <span class="what">Room for ${TURNKEY.beds} plants, a ruler, a scale and a colour camera. No smart planner: you decide, or pick at random.</span>
          <span class="note">Works on day 1. Never breaks. But it is closed: you cannot add other sensors or planners.</span></button>
        <button class="choice ${mod?"on":""}" data-sys="modular"><h3>Modular parts (build it yourself)<span class="price">from ${eur(MOD.basePrice)}</span></h3>
          <span class="what">A controller and room for 1 plant for ${eur(MOD.basePrice)}. Each extra plant ${eur(MOD.bedPrice)}. Add any sensors and planners.</span>
@@ -231,6 +231,8 @@ function openBuild2(){
      <div class="checks">${PROPS2.filter(p=>G.weights[p.k]).map(p=>meas[p.k]?`<span class="ok">✓ ${p.name}: measured by ${SENS2M[meas[p.k].by].name}</span>`:`<span class="bad">✗ ${p.name}: not measured. Your planner cannot see it!</span>`).join("")}</div>
      <h3>4. Planner (p)</h3>
      <div class="buylist">${plannerRows}</div>
+     <h3>5. During the round</h3>
+     <ul class="goal">${r2DuringText(setup).map(s=>`<li>${s}</li>`).join("")}</ul>
      <div class="total">Money left: ${eur(G.money)} of ${eur(START_MONEY)} · Setup before you start: ${setup} day${setup===1?"":"s"} · ${G.beds} plants per batch</div>
      ${blind.length?`<p class="warn">Warning: ${blind.map(p=>p.name).join(" and ")} ${blind.length>1?"are":"is"} part of your health score, but nothing measures ${blind.length>1?"them":"it"}.</p>`:""}
      <div class="row"><label class="label" for="team">Team name</label><input id="team" type="text" maxlength="24" placeholder="e.g. Basil Instinct" value="${esc(G.team)}"></div>
@@ -246,7 +248,7 @@ function openBuild2(){
     if($("#b-bp"))$("#b-bp").onclick=()=>{keepTeam();G.beds++;syncEquipment();frameView();render()};
     document.querySelectorAll("[data-sen]").forEach(b=>b.onclick=()=>{keepTeam();const id=b.dataset.sen;if(id==="ruler")return;G.sensors[id]=G.sensors[id]?0:1;syncEquipment();render()});
     document.querySelectorAll("[data-pl2]").forEach(b=>b.onclick=()=>{keepTeam();const id=b.dataset.pl2;if(G.own[id])delete G.own[id];else G.own[id]=1;syncEquipment();render()});
-    if($("#b-sayB"))$("#b-sayB").onclick=()=>speak(`Build your lab. You have ${START_MONEY} dollars. First choose how to get your lab. You can buy a complete set, the GrowBox. One company sells everything together, and it works from day one. But you can only use what is in the box. Or you can build it yourself from modular parts. Start small and add parts one by one. You choose every part, and it is cheaper per plant. But each new part takes time to set up, and home-made setups break more often. Then choose how many plants grow at once in each batch. This is N. More plants at once means more chances to find an exceptional plant. Then choose sensors and a planner. Sensors decide what you can measure. If your health score needs something that no sensor measures, your planner cannot see it. You have ${G.money} dollars left, and setup takes ${setup} days.`);
+    if($("#b-sayB"))$("#b-sayB").onclick=()=>speak(`Build your lab. You have ${START_MONEY} dollars. First choose how to get your lab. You can buy a complete set, the GrowBox. One company sells everything together, and it works from day one. But you can only use what is in the box. Or you can build it yourself from modular parts. Start small and add parts one by one. You choose every part, and it is cheaper per plant. But each new part takes time to set up, and home-made setups break more often. Then choose how many plants grow at once in each batch. This is N. More plants at once means more chances to find an exceptional plant. Then choose sensors and a planner. Sensors decide what you can measure. If your health score needs something that no sensor measures, your planner cannot see it. Money you do not spend stays in the bank. You need it for lab tests, which you pay in every batch, and for upgrades on day 21. Modular parts sometimes break. Repairs happen by themselves and cost no money, but they cost plants or time. You have ${G.money} dollars left, and setup takes ${setup} days.`);
     $("#b-back2").onclick=()=>{keepTeam();openDefine(G.team,G.weights)};
     $("#b-go2").onclick=()=>{keepTeam();if(G.money<0)return;const t=(G.team||"").trim()||"Team "+(100+Math.floor(rng()*900));localSet("sdl-team",t);G.team=t;r2Start()};
   };
@@ -255,7 +257,7 @@ function openBuild2(){
 function r2Start(){
   PCTX=r2Context();
   closeOverlay();syncEquipment();frameView();
-  const smart=["twin","rough","bo","evo"].find(id=>G.own[id]);
+  const smart=["twin","rough","bo"].find(id=>G.own[id]);
   if(smart){G.planner=smart}else{G.planner="you";G.planFrom="you"}
   G.setupDays=r2SetupDays();
   if(G.setupDays>0){G.phase="setup";startPhase("setup",G.setupDays);toast(`Setting up your modular lab: ${G.setupDays} day${G.setupDays>1?"s":""}.`)}
@@ -264,18 +266,36 @@ function r2Start(){
   ui();
 }
 
+/* Build screen: what happens to money, upgrades and repairs once the round runs */
+function r2DuringText(setup){
+  const mod=G.system==="modular",out=[];
+  out.push("<b>Money:</b> money you do not spend now stays in the bank. You can use it later in the round.");
+  if(G.weights.vitc&&G.sensors.lab){
+    const per=SENS2M.lab.perPlant*G.beds,smart=["twin","rough","bo"].find(id=>G.own[id]);
+    const n=Math.max(1,Math.floor((SEASON_DAYS-setup)/(GROW_DAYS+SENS2M.lab.wait+(smart?PLANNER[smart].days:0))));
+    out.push(`<b>Vitamin C tests:</b> ${G.beds} plants × ${eur(SENS2M.lab.perPlant)} = <b>${eur(per)} per batch</b>. You pay at the start of every batch. For about ${n} batches, that is about <b>${eur(per*n)}</b>. If you run out of money, vitamin C is not measured.`
+      +(G.money<per*n?` <span class="warn">You have less than that left.</span>`:""));
+  }else if(G.weights.vitc)out.push(`<b>Vitamin C tests:</b> if you choose the lab test, it costs ${eur(SENS2M.lab.perPlant)} per plant in every batch. Keep money for it.`);
+  out.push(mod?"<b>Upgrades:</b> on day 21 your funder checks in. If you have an exceptional plant by then, you get <b>$2,000</b> more. Then you can spend your money on more plants, sensors or planners. New parts need setup days."
+             :"<b>Upgrades:</b> on day 21 your funder checks in. If you have an exceptional plant by then, you get <b>$2,000</b> more. But the GrowBox is closed, so you cannot add anything to it.");
+  out.push(mod?"<b>Repairs:</b> modular parts sometimes break. Repairs happen by themselves and cost no money, but they cost plants or time. A clogged pump kills one plant. A crashed controller costs 1 day. A camera that loses calibration gives noisy colour readings for one batch."
+             :"<b>Repairs:</b> the GrowBox never breaks, so there is nothing to repair.");
+  return out;
+}
+
 /* ---------- Step 3 panels ---------- */
 function r2RenderTop(){
   const gold=G.data.filter(d=>d.y!=null&&d.y>=G.thr).length;
   $("#top").innerHTML=`
    <div class="panel cell"><span class="label">Round 2 · Step 3: Run</span><span class="big">Day <span id="dayval">${G.day}</span><span style="font-size:14px;color:var(--muted)"> / ${SEASON_DAYS}</span></span><div id="daybar"><i></i></div></div>
    <div class="panel cell"><span class="label">${esc(G.team)}'s lab</span><span class="big" style="font-size:16px"><span style="color:var(--amber)">${G.system==="turnkey"?"GrowBox":"Modular"} · ${G.beds} plants</span></span></div>
+   <div class="panel cell"><span class="label">Money left</span><span class="big" style="color:var(--gold)">${eur(G.money)}</span></div>
    <div class="panel cell"><span class="label">Health score</span><span class="big" style="font-size:14px;max-width:260px;white-space:normal">${weightText(G.weights)}</span></div>
    <div class="panel cell"><span class="label">Exceptional (${G.thrR}+)</span><span class="big" style="color:var(--gold)">${gold}</span></div>
    <div id="ctrls" class="panel"><button class="btn small" id="b-tour">How to play</button>${sayBtn("b-say2")}<button class="btn small" id="b-fast">${G.fast?"Speed: fast":"Speed: normal"}</button><button class="btn small" id="b-finish">Finish</button></div>`;
   $("#b-fast").onclick=()=>{G.fast=!G.fast;ui()};
   $("#b-tour").onclick=()=>{if(G.phase==="plan")startTour();else toast("The tour opens when you can plan the next batch.")};
-  if($("#b-say2"))$("#b-say2").onclick=()=>{const b=best();speak(`Day ${G.day} of ${SEASON_DAYS}. You have ${gold} exceptional plants. ${b?`Your best health score is ${Math.round(b.y)}. `:""}Set the conditions on the left, or choose a planner. Then press Plant and grow.`)};
+  if($("#b-say2"))$("#b-say2").onclick=()=>{const b=best();speak(`Day ${G.day} of ${SEASON_DAYS}. You have ${gold} exceptional plants and ${Math.round(G.money)} dollars left. ${b?`Your best health score is ${Math.round(b.y)}. `:""}Set the conditions on the left, or choose a planner. Then press Plant and grow.`)};
   $("#b-finish").onclick=()=>{if(G.phase==="plan")finishSeason()};
   updateClock();
   document.documentElement.style.setProperty("--toph",$("#top").offsetHeight+"px");

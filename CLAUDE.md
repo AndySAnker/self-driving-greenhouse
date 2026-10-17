@@ -14,7 +14,7 @@ at https://andysanker.github.io/self-driving-greenhouse/ (leaderboard screen: ad
 ## Code map
 
 - `1_model.js`: conditions (water, light, fertiliser, temperature), the hidden height formula, planners
-  (random, "Tweak the best", Bayesian optimisation, BO + rough twin, BO + detailed twin), economy ($12,000 budget).
+  (random, Bayesian optimisation, BO + rough twin, BO + detailed twin), economy ($12,000 budget).
 - `2_world.js`: the 3D voxel greenhouse (three.js), camera, keyboard.
 - `3_game.js`: Round 1 game loop, phases (build, plan, think, grow, wait), panels, charts, end screen, start screen.
 - `3b_round2.js`: Round 2: multi-objective health score, ready-made GrowBox vs modular lab, sensors, breakdowns,

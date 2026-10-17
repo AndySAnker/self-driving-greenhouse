@@ -52,14 +52,17 @@ function tourStepsR2(){
   const s=[
     {t:"Round 2: what is new",
      x:"The greenhouse works like in Round 1: plants, sliders, planners and <b>Plant &amp; grow</b>.<br>This short tour only shows what is new."},
-    {sel:"#top .cell:nth-child(3)",t:"Your health score",
+    {sel:"#top .cell:nth-child(4)",t:"Your health score",
      x:"Plants are no longer judged by height alone. This is <b>your</b> definition of a healthy plant. The planners try to make this score high."},
+    {sel:"#top .cell:nth-child(3)",t:"Your money",
+     x:lab?`This is the money you have left. Lab tests for vitamin C are paid from it at the start of every batch. If you run out, vitamin C is not measured.`
+          :mod?"This is the money you have left. If your funder gives you more on day 21, you can spend it on upgrades then.":"This is the money you have left. The GrowBox is closed, so there is nothing more to buy."},
     {sel:"#right .card:first-child",t:"Score, not height",
      x:`The dots now show each plant’s health score. Gold dots are exceptional: a score of <b>${G.thrR}</b> or more.<br>${G.own.rough||G.own.twin?"Your digital twin also adds <b>hollow circles</b>. These are simulated plants: the twin's prediction, not real plants. Compare them with the real dots to see how good the twin is.":"Teams with a digital twin also see <b>hollow circles</b>. These are simulated plants: the twin's prediction, not real plants."}`},
     {sel:"#right .card:nth-child(2)",t:"What your sensors saw",
      x:"After a batch, click a plant to see what your sensors measured. Sensors can be noisy. <b>Not measured</b> means your planner cannot see that property at all."},
     {sel:"#top .cell:nth-child(2)",t:mod?"Your modular lab":"Your GrowBox",
-     x:mod?"Parts you built yourself can break: a pump can clog, the computer can crash, or the camera can fail. A broken part can cost you plants or days."
+     x:mod?"Parts you built yourself can break: a pump can clog, the computer can crash, or the camera can fail. A broken part can cost you plants or days. Repairs happen by themselves and cost no money."
           :"Your GrowBox never breaks. But it is closed: you cannot add other sensors or planners."},
   ];
   s.push({sel:"#action",t:"Waiting for results",

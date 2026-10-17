@@ -146,7 +146,6 @@ function syncEquipment(){
   }
   if(G.own.rough){const tw=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1,1,1)),new THREE.LineBasicMaterial({color:"#9bb0ff"}));tw.position.set(-6.3,3.4,-13.1);equip.add(tw);anim.rough=tw}
   if(G.own.twin){const tw=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1.4,1.4,1.4)),new THREE.LineBasicMaterial({color:"#5fd3e8"}));tw.position.set(-4.5,4.6,-13.1);equip.add(tw);anim.twin=tw}
-  if(G.own.evo){vox(equip,-2.4,.4,-13.1,1.6,.8,.9,"#9a7a4a");vox(equip,-2.4,1.25,-13.1,1.1,.85,.5,"#d9d2bf");vox(equip,-2.4,1.27,-12.84,.85,.6,.02,mat("#7fd650",{basic:true}))}
   vox(equip,-6.3,.35,-13.1,.7,.7,.7,"#f4f4f4");for(const [dx,dy] of [[-.15,.15],[.15,-.15],[0,0]])vox(equip,-6.3+dx,.35+dy,-12.74,.12,.12,.02,"#111");
   if(G.round===2){
     const S=G.sensors||{};
