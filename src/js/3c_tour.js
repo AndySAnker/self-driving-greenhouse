@@ -28,9 +28,9 @@ function tourSteps(){
     {sel:"#top .cell:first-child",t:"Time",
      x:`The season has ${SEASON_DAYS} days. Each batch of plants grows for ${GROW_DAYS} days. Smart planners also need a few days to think.`},
     {sel:"#left .kh, #left .prows",t:"Your plants (N)",
-     x:`Each row is one plant in the next batch. You grow <b>${G.beds}</b> plant${G.beds>1?"s":""} at once. This is N.<br>The coloured bars show its growing conditions: water, light, fertiliser and temperature.`},
+     x:`Each row is one plant in the next batch. You grow <b>${G.beds}</b> plant${G.beds>1?"s":""} at once. This is N.<br>The coloured bars show its growing conditions: water, light, fertiliser, and temperature.`},
     {sel:"#left .editor, #left .rowbtns",t:"Choose the conditions yourself",
-     x:`Click a row, or a plant in the greenhouse. Then move the sliders to set its water, light, fertiliser and temperature.${G.beds>1?" The buttons below copy or mix the conditions for all plants.":""}`},
+     x:`Click a row, or a plant in the greenhouse. Then move the sliders to set its water, light, fertiliser, and temperature.${G.beds>1?" The buttons below copy or mix the conditions for all plants.":""}`},
     {sel:"#left .planners",t:"Or let a planner choose (p)",
      x:"Instead of moving the sliders yourself, a planner can choose the conditions for you. <b>Random</b> picks by chance. A planner you bought learns from every plant you grow, so p goes up. Some planners think for a few days first."},
     {rect:stageRect,t:"Your greenhouse",
@@ -52,7 +52,7 @@ function tourStepsR2(){
   const mod=G.system!=="turnkey";
   const s=[
     {t:"Round 2: what is new",
-     x:"The greenhouse works like in Round 1: plants, sliders, planners and <b>Plant &amp; grow</b>.<br>This short tour only shows what is new."},
+     x:"The greenhouse works like in Round 1: plants, sliders, planners, and <b>Plant &amp; grow</b>.<br>This short tour only shows what is new."},
     {sel:"#top .cell:nth-child(4)",t:"Your health score",
      x:"Plants are no longer judged by height alone. This is <b>your</b> definition of a healthy plant. The planners try to make this score high."},
     {sel:"#top .cell:nth-child(3)",t:"Your money",

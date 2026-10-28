@@ -285,7 +285,7 @@ function openBuild(team){
        <p>Now you spend your money. You can buy <b>equipment</b> (room for more plants) and <b>algorithms</b> (smart planners). Two numbers decide how many exceptional plants you find:</p>
        <div class="np">
          <span class="k" style="color:var(--amber)">N</span><p><b>How many plants you grow at once.</b> Buy room for more plants to make N bigger.</p>
-         <span class="k" style="color:var(--magenta)">p</span><p><b>The chance that one plant is exceptional.</b> A planner is an algorithm that picks the water, light, fertiliser and temperature. With random picks, p is only about ${(P_RANDOM*100).toFixed(1)}&nbsp;%. A smart planner learns from your plants and makes p bigger.</p>
+         <span class="k" style="color:var(--magenta)">p</span><p><b>The chance that one plant is exceptional.</b> A planner is an algorithm that picks the water, light, fertiliser, and temperature. With random picks, p is only about ${(P_RANDOM*100).toFixed(1)}&nbsp;%. A smart planner learns from your plants and makes p bigger.</p>
        </div>
        <p>A big N and a big p both help. Your money cannot buy everything, so choose your mix.</p>
        <p><b>Spend the money now.</b> You cannot buy more later.</p>
@@ -294,7 +294,7 @@ function openBuild(team){
        <section class="bcol"><h3 style="color:var(--amber)">More plants (N)</h3>
          <p class="small">Each plant grows for ${GROW_DAYS} days. Then a new one starts. Your first plant is free.</p>
          <div class="stepper"><button class="btn" id="b-minus" ${G.beds<=BEDS_START?"disabled":""} aria-label="One plant fewer">−</button><span class="num bigbeds">${G.beds}</span><span>plant${G.beds>1?"s":""} at once</span><button class="btn" id="b-plus" ${G.beds>=BEDS_MAX||G.money<BEDS_PRICE?"disabled":""} aria-label="One plant more">+</button></div>
-         <p class="small">Each extra plant: ${eur(BEDS_PRICE)}. It gets its own pot, lamp and pump.</p></section>
+         <p class="small">Each extra plant: ${eur(BEDS_PRICE)}. It gets its own pot, lamp, and pump.</p></section>
        <section class="bcol"><h3 style="color:var(--magenta)">Smarter planning (p)</h3>
          <p class="small">A planner picks the growing conditions. "You decide" and "Random" are free. Smart planners cost money, and some need extra days to think.</p>
          <div class="inforow">${infoBtn("bo","What is Bayesian optimisation?")}${infoBtn("twin","What is a digital twin?")}</div>

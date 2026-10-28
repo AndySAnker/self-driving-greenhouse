@@ -44,7 +44,7 @@ const SENS2=[
   {id:"scale",name:"Kitchen scale",price:100,setup:0,m:{yield:.03},what:"Weighs the harvest."},
   {id:"camera",name:"Colour camera",price:1500,setup:1,m:{green:.08},what:"Measures leaf colour. A bit noisy."},
   {id:"lab",name:"Lab test for vitamin C",price:0,perPlant:40,wait:2,setup:0,m:{vitc:.02},what:"Very accurate. Costs $40 per plant, and the results take 2 days."},
-  {id:"hyper",name:"Hyperspectral camera",price:8000,vitcPerPlant:40,setup:2,m:{green:.02,vitc:.05,yield:.04},what:"Measures leaf colour, vitamin C and harvest, with no waiting. Expensive. Vitamin C still costs $40 per plant, like the lab test, but is less accurate."},
+  {id:"hyper",name:"Hyperspectral camera",price:8000,vitcPerPlant:40,setup:2,m:{green:.02,vitc:.05,yield:.04},what:"Measures leaf colour, vitamin C, and harvest, with no waiting. Expensive. Vitamin C still costs $40 per plant, like the lab test, but is less accurate."},
 ];
 const SENS2M=Object.fromEntries(SENS2.map(s=>[s.id,s]));
 const TURNKEY={price:10000,beds:8,packPrice:3000,pack:4,maxPacks:0,sensors:["ruler","scale","camera"],planners:[]};
@@ -215,13 +215,13 @@ function openBuild2(){
      <h3>1. Buy a complete set, or build it yourself?</h3>
      <p>There are two ways to get a self-driving lab:</p>
      <ul class="goal">
-       <li><b>Buy a complete set.</b> One company sells everything together: room for plants, sensors, robot and software. It all works together from day 1. But you can only use what is in the box.</li>
+       <li><b>Buy a complete set.</b> One company sells everything together: room for plants, sensors, robot, and software. It all works together from day 1. But you can only use what is in the box.</li>
        <li><b>Build it yourself.</b> Start small and add parts one by one: more plants, other sensors, a smarter planner. You choose every part. But each new part takes time to set up, and home-made setups break more often.</li>
      </ul>
      <p>Real labs face the same choice: a closed system that just works, or an open one you can change.</p>
      <div class="cols">
        <button class="choice ${G.system==="turnkey"?"on":""}" data-sys="turnkey"><h3>GrowBox Pro (complete set)<span class="price">${eur(TURNKEY.price)}</span></h3>
-         <span class="what">Room for ${TURNKEY.beds} plants, a ruler, a scale and a colour camera. No smart planner: you decide, or pick at random.</span>
+         <span class="what">Room for ${TURNKEY.beds} plants, a ruler, a scale, and a colour camera. No smart planner: you decide, or pick at random.</span>
          <span class="note">Works on day 1. Never breaks. But it is closed: you cannot add other sensors or planners.</span></button>
        <button class="choice ${mod?"on":""}" data-sys="modular"><h3>Modular parts (build it yourself)<span class="price">from ${eur(MOD.basePrice)}</span></h3>
          <span class="what">A controller and room for 1 plant for ${eur(MOD.basePrice)}. Each extra plant ${eur(MOD.bedPrice)}. Add any sensors and planners.</span>
@@ -282,7 +282,7 @@ function r2DuringText(setup){
     out.push(`<b>Vitamin C tests:</b> ${G.beds} plants × ${eur(r2VitcPerPlant())} = <b>${eur(per)} per batch</b>. You pay at the start of every batch. For about ${n} batches, that is about <b>${eur(per*n)}</b>. If you run out of money, vitamin C is not measured.`
       +(G.money<per*n?` <span class="warn">You have less than that left.</span>`:""));
   }else if(G.weights.vitc)out.push(`<b>Vitamin C tests:</b> measuring vitamin C costs ${eur(SENS2M.lab.perPlant)} per plant in every batch, with the lab test or the hyperspectral camera. Keep money for it.`);
-  out.push(mod?"<b>Upgrades:</b> on day 21 your funder checks in. If you have an exceptional plant by then, you get <b>$2,000</b> more. Then you can spend your money on more plants, sensors or planners. New parts need setup days."
+  out.push(mod?"<b>Upgrades:</b> on day 21 your funder checks in. If you have an exceptional plant by then, you get <b>$2,000</b> more. Then you can spend your money on more plants, sensors, or planners. New parts need setup days."
              :"<b>Upgrades:</b> on day 21 your funder checks in. If you have an exceptional plant by then, you get <b>$2,000</b> more. But the GrowBox is closed, so you cannot add anything to it.");
   out.push(mod?"<b>Repairs:</b> modular parts sometimes break. Repairs happen by themselves and cost no money, but they cost plants or time. A clogged pump kills one plant. A crashed controller costs 1 day. A camera that loses calibration gives noisy colour readings for one batch."
              :"<b>Repairs:</b> the GrowBox never breaks, so there is nothing to repair.");
