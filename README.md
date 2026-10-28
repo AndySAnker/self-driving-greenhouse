@@ -11,6 +11,12 @@ More plants at once raise N (automation). Smarter planners raise p (AI).
 - **Round 2: What is a healthy plant?** Define health with several objectives, choose a ready-made or modular lab,
   pick sensors, and let a plant expert judge the result.
 
+## Audience poll
+
+`poll/index.html` is a phone page for lectures: four quick, anonymous questions (who you are, field, main interest,
+experience with self-driving labs). Answers go to ntfy.sh under `sdl-poll-<room>` (default room `aalto-bf9c94`,
+or `?room=name`); the "Who is in the room?" slide in the lecture deck shows them live.
+
 ## Play
 
 Open `index.html` through the website (GitHub Pages). It needs no login and no installation, and works on laptops and phones.

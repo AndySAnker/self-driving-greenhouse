@@ -23,6 +23,17 @@ at https://andysanker.github.io/self-driving-greenhouse/ (leaderboard screen: ad
 - `4_board.js`: result codes and the class leaderboard. On GitHub Pages the live board uses ntfy.sh with
   the class name in `window.SDL_CLASS`; result codes are the fallback.
 
+## Audience poll (`poll/`)
+
+- `poll/index.html` is a stand-alone phone page (no build step). Its four answer lists must stay in the same order as
+  `POLL_Q` in the lecture deck (`Teaching/2026/Aalto/lecture-1/index.html`): answers are sent as list positions.
+
+## Live leaderboard
+
+- Besides the final result, a run posts a few progress messages (start, more exceptional plants, day 21) with
+  `live:1`, so the board shows "playing · day N" during class. Keep these rare: a classroom shares one IP address
+  and ntfy.sh limits messages per address.
+
 ## Style rules from the author
 
 - Easy to understand and dyslexia-friendly: Lexend font, short sentences, plain words, a Read aloud option.

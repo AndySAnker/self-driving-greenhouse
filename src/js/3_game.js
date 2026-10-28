@@ -95,6 +95,7 @@ function endBatch(){
   if(!ys.length)ys.push(0);
   G.batches.push({n:G.cur.n,planner:G.cur.planner,beds:G.cur.beds,day:G.day,ys,gold,thinkDays:PLANNER[G.cur.planner]?PLANNER[G.cur.planner].days:0});
   if(gold&&G.firstGold==null)G.firstGold=G.day;
+  progressAfterBatch();
   refreshAll();
   const mx=Math.max(...ys);
   if(G.round===2)toast(gold?`Batch ${G.cur.n}: ${gold} of ${G.cur.beds} plants are exceptional!`:`Batch ${G.cur.n}: best health score ${Math.round(mx)}. None reached ${G.thrR}.`,gold?"gold":"");
@@ -323,6 +324,7 @@ function startCampaign(){
   closeOverlay();syncEquipment();frameView();
   if(smart)setPlanner(smart);else{G.planner="you";G.planFrom="you"}
   toast(`Your greenhouse is built. Now use it: ${SEASON_DAYS} days start now.`);
+  postProgress();   // the team shows up on the class board as "playing"
   ui();
 }
 

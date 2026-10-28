@@ -268,6 +268,7 @@ function r2Start(){
   if(G.setupDays>0){G.phase="setup";startPhase("setup",G.setupDays);toast(`Setting up your modular lab: ${G.setupDays} day${G.setupDays>1?"s":""}.`)}
   else{G.phase="plan";toast("Your GrowBox works out of the box. Day 1 starts now.")}
   if(smart){const cs=plan(smart,G.data,G.beds);for(let i=0;i<G.beds;i++)G.plan[i]=cs[i];G.planFrom=smart}
+  postProgress();   // the team shows up on the class board as "playing"
   ui();
 }
 

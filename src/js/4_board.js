@@ -80,14 +80,34 @@ function liveConnect(){
     liveES.onmessage=ev=>{try{const m=JSON.parse(ev.data);if(m.event&&m.event!=="message")return;
       const r=JSON.parse(m.message);const id=String(r.id||"").replace(/[^A-Za-z0-9_-]/g,"").slice(0,60);if(!id)return;
       const e=entryFromCode(String(r.code||""),String(r.team||"Team"),id);if(!e)return;e.at=(m.time||0)*1000;
+      e.live=!!r.live;e.day=+r.day||0;   // a progress update from a team still playing
+      const old=liveRuns.get(id);if(e.live&&old&&!old.live)return;   // never let a late progress update replace a final result
       liveState="live";liveRuns.set(id,e);if(boardFrom)renderBoard()}catch(err){}};
     liveES.onerror=()=>{if(liveES&&liveES.readyState===2){liveState="error";liveES=null;if(boardFrom)renderBoard()}};   // the browser retries by itself
     setTimeout(()=>{if(liveState==="connecting"){liveState="error";if(boardFrom)renderBoard()}},8000);
   }catch(e){liveState="error";liveES=null}
 }
+// send one message to the class relay; up to 3 tries, because classroom Wi-Fi drops the odd request
+async function relay(msg){
+  for(let k=0;k<3;k++){try{const r=await fetch(LIVE.url,{method:"POST",body:JSON.stringify(msg)});if(r.ok)return true}catch(e){}
+    await new Promise(res=>setTimeout(res,1500*(k+1)))}
+  return false;
+}
 async function livePost(code,team,id){
   if(!LIVE)return false;
-  try{const r=await fetch(LIVE.url,{method:"POST",body:JSON.stringify({id,team:String(team||"Team").slice(0,24),code})});return r.ok}catch(e){return false}
+  return relay({id,team:String(team||"Team").slice(0,24),code});
+}
+/* progress while a team plays, so the board fills during the round: at the start, whenever the team finds more
+   exceptional plants, and once at day 21. Few messages on purpose: a classroom shares one internet address, and the
+   free relay limits how many messages one address may send. The final result replaces the row at the end. */
+function postProgress(){
+  if(!LIVE||!G||G.phase==="done")return;
+  const id=G.runId.replace(/[^A-Za-z0-9_-]/g,"");const code=G.round===2?encodeResult2():encodeResult();
+  relay({id,team:String(G.team||"Team").slice(0,24),code,live:1,day:G.day});
+}
+function progressAfterBatch(){
+  const gold=G.data.filter(d=>d.y!=null&&d.y>=(G.round===2?G.thr:GOLD)).length;
+  if(gold>(G.progGold||0)||(!G.progHalf&&G.day>=21)){G.progGold=gold;if(G.day>=21)G.progHalf=true;postProgress()}
 }
 function clearedAt(){try{return +localStorage.getItem("sdl-cleared-at")||0}catch(e){return 0}}
 function localRuns(){try{return JSON.parse(localStorage.getItem("sdl-runs3")||"[]")}catch(e){return[]}}
@@ -114,6 +134,7 @@ function allEntries(){
   return all.filter(e=>(e.round||1)===1&&e.spent<=START_MONEY).sort((a,b)=>b.gold-a.gold||((a.first??99)-(b.first??99)));
 }
 function openBoard(from){boardFrom=from;liveConnect();if(G&&G.round===2)boardRound=2;else if(G)boardRound=1;renderBoard()}
+const playing=e=>e.live?` <span class="chip" style="--c:#7fd650">playing · day ${e.day}</span>`:"";
 const wShort=W=>{const tot=PK2.reduce((a,k)=>a+(W[k]||0),0);return PROPS2.filter(p=>W[p.k]).map(p=>`${p.name} ${Math.round(W[p.k]/tot*100)}%`).join(", ")};
 function renderBoard(){
   const rows=allEntries();
@@ -121,10 +142,10 @@ function renderBoard(){
    <p class="small">${DB?"Results are saved on this page for everyone who can open it.":LIVE?`Live class board “${esc(LIVE.name)}”: ${liveState==="live"?"connected. Results from everyone playing with this link appear here.":liveState==="error"?"not reachable right now. Type in the result codes below instead.":"connecting…"}`:"Results are saved in this browser. Use one computer as the class screen."} Ranked by exceptional plants, then by the day of the first one.</p>
    <div class="row"><button class="btn small ${boardRound===1?"primary":""}" data-br="1">Round 1</button><button class="btn small ${boardRound===2?"primary":""}" data-br="2">Round 2</button></div>
    ${boardRound===1?`<div class="tw"><table class="t"><thead><tr><th>#</th><th>Team</th><th style="text-align:right">Exceptional</th><th style="text-align:right">First on day</th><th style="text-align:right">Plants at once (N)</th><th>Planners bought</th><th style="text-align:right">Plants grown</th><th style="text-align:right">Spent</th><th style="text-align:right">Tallest</th></tr></thead>
-   <tbody>${rows.length?rows.map((e,i)=>`<tr><td class="n">${i+1}</td><td>${esc(e.team)}</td><td class="n" style="color:var(--gold)">${e.gold}</td><td class="n">${e.first==null?"–":e.first}</td><td class="n">${e.beds}</td><td>${e.planners.length?e.planners.map(id=>`<span class="chip" style="--c:${PLANNER[id].col}">${PLANNER[id].name}</span>`).join(" "):`<span class="small">none</span>`}</td><td class="n">${e.plants}</td><td class="n">${eur(e.spent)}</td><td class="n">${e.best} cm</td></tr>`).join(""):`<tr><td colspan="9" class="small">No results yet. Teams appear when they finish a season.</td></tr>`}</tbody></table></div>`:
+   <tbody>${rows.length?rows.map((e,i)=>`<tr><td class="n">${i+1}</td><td>${esc(e.team)}${playing(e)}</td><td class="n" style="color:var(--gold)">${e.gold}</td><td class="n">${e.first==null?"–":e.first}</td><td class="n">${e.beds}</td><td>${e.planners.length?e.planners.map(id=>`<span class="chip" style="--c:${PLANNER[id].col}">${PLANNER[id].name}</span>`).join(" "):`<span class="small">none</span>`}</td><td class="n">${e.plants}</td><td class="n">${eur(e.spent)}</td><td class="n">${e.best} cm</td></tr>`).join(""):`<tr><td colspan="9" class="small">No teams yet. Teams appear as soon as they start playing.</td></tr>`}</tbody></table></div>`:
    `<p class="small">Ranked by exceptional plants, then by the plant expert's stars.</p>
    <div class="tw"><table class="t"><thead><tr><th>#</th><th>Team</th><th>Their health score</th><th style="text-align:right">Exceptional</th><th>Expert</th><th>System</th><th>Sensors</th><th style="text-align:right">Spent</th></tr></thead>
-   <tbody>${rows.length?rows.map((e,i)=>`<tr><td class="n">${i+1}</td><td>${esc(e.team)}</td><td class="small" style="color:var(--ink)">${wShort(e.weights)}</td><td class="n" style="color:var(--gold)">${e.gold}</td><td style="color:var(--gold)">${"★".repeat(e.stars)}</td><td>${e.system==="turnkey"?"GrowBox":"Modular"} · ${e.beds} beds</td><td class="small" style="color:var(--ink)">${e.sensors.map(id=>SENS2M[id].name).join(", ")}</td><td class="n">${eur(e.spent)}</td></tr>`).join(""):`<tr><td colspan="8" class="small">No Round 2 results yet.</td></tr>`}</tbody></table></div>`}
+   <tbody>${rows.length?rows.map((e,i)=>`<tr><td class="n">${i+1}</td><td>${esc(e.team)}${playing(e)}</td><td class="small" style="color:var(--ink)">${wShort(e.weights)}</td><td class="n" style="color:var(--gold)">${e.gold}</td><td style="color:var(--gold)">${"★".repeat(e.stars)}</td><td>${e.system==="turnkey"?"GrowBox":"Modular"} · ${e.beds} plants</td><td class="small" style="color:var(--ink)">${e.sensors.map(id=>SENS2M[id].name).join(", ")}</td><td class="n">${eur(e.spent)}</td></tr>`).join(""):`<tr><td colspan="8" class="small">No Round 2 results yet.</td></tr>`}</tbody></table></div>`}
    <h3>Add a result code</h3>
    <form id="codeform" class="row"><input id="c-team" type="text" placeholder="Team name" maxlength="24" style="max-width:200px"><input id="c-code" type="text" placeholder="Result code" maxlength="18" style="max-width:200px"><button class="btn primary" type="submit">Add</button><span class="small" id="c-msg"></span></form>
    ${rows.length?`<div class="row"><button class="btn small" id="b-clear">Clear this board…</button><span id="clear-confirm"></span></div>`:""}`);
